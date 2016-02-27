@@ -27,7 +27,7 @@ public class GoatHttpClientTest {
     public static void main(String[] args) throws IOException, JAXBException {
         CloseableHttpClient httpclient = HttpClients.createDefault();
         try {
-            HttpGet httpget = new HttpGet("http://sage-ws.ddns.net:8080/sage-ws/0.1/goats?age");
+            HttpGet httpget = new HttpGet("http://sage-ws.ddns.net:8080/sage-ws/0.1/goats");
 
             System.out.println("Executing request " + httpget.getRequestLine());
 
@@ -53,11 +53,17 @@ public class GoatHttpClientTest {
             mapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
 
             try {
-                JSONObject jsonObject = new JSONObject(responseBody);
-                Object goatObject = jsonObject.get("goat");
-                String JSONString = goatObject.toString();
-                List<Goat> goats = mapper.readValue(JSONString, new TypeReference<List<Goat>>(){});
-                System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(goats));
+                if (!responseBody.equals("null")) {
+                    JSONObject jsonObject = new JSONObject(responseBody);
+                    Object goatObject = jsonObject.get("goat");
+                    String JSONString = goatObject.toString();
+                    List<Goat> goats = mapper.readValue(JSONString, new TypeReference<List<Goat>>() {
+                    });
+                    System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(goats));
+                }
+                else {
+                    System.out.println("Empty Response");
+                }
             }
             catch (JsonGenerationException e) {
                 e.printStackTrace();
