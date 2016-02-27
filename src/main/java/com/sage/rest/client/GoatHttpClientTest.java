@@ -28,6 +28,8 @@ public class GoatHttpClientTest {
         CloseableHttpClient httpclient = HttpClients.createDefault();
         try {
             HttpGet httpget = new HttpGet("http://sage-ws.ddns.net:8080/sage-ws/0.1/goats");
+            httpget.setHeader("IdToken","IdTokenGarbage");
+            httpget.setHeader("SageToken","SageTokenGarbage");
 
             System.out.println("Executing request " + httpget.getRequestLine());
 
