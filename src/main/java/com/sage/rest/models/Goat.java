@@ -1,17 +1,11 @@
 package com.sage.rest.models;
 
-import javax.xml.bind.annotation.XmlElement;
-
 public class Goat {
 
     private static int latestGoatId = 0;
-
     private int goatId;
-
     private int age;
-
     private int aggression;
-
     private double weight;
 
     public Goat() {
@@ -19,7 +13,6 @@ public class Goat {
         goatId = latestGoatId++;
     }
 
-    @XmlElement(name = "goatId")
     public int getGoatId() {
         return goatId;
     }
@@ -28,7 +21,6 @@ public class Goat {
         this.goatId = goatId;
     }
 
-    @XmlElement(name = "age")
     public int getAge() {
         return age;
     }
@@ -37,7 +29,6 @@ public class Goat {
         this.age = age;
     }
 
-    @XmlElement(name = "aggression")
     public int getAggression() {
         return aggression;
     }
@@ -46,7 +37,6 @@ public class Goat {
         this.aggression = aggression;
     }
 
-    @XmlElement(name = "weight")
     public double getWeight() {
         return weight;
     }
