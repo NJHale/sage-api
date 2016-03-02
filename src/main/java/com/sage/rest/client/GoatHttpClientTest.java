@@ -1,11 +1,15 @@
 package com.sage.rest.client;
 
+import com.sage.rest.models.*;
+
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.sage.rest.models.Goat;
+import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -18,16 +22,16 @@ import org.apache.http.util.EntityUtils;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
+import javax.swing.*;
 import javax.xml.bind.JAXBException;
 
 public class GoatHttpClientTest {
     public static void main(String[] args) throws IOException, JAXBException {
         CloseableHttpClient httpclient = HttpClients.createDefault();
         try {
-            HttpGet httpget = new HttpGet("http://sage-ws.ddns.net:8080/sage-ws/0.1/goats");
+            HttpGet httpget = new HttpGet("http://sage-ws.ddns.net:8080/sage/0.1/goats");
 
             String tempToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlZjUwNTEzNjVjMjBiNDkwODg2N2UyZjg1ZGUxZTU0MWM2Y2NkM2MifQ."
             + "eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXRfaGFzaCI6ImRJeUJhNGlid2tSOUdPeU4yZEUxTWciLCJhdWQiOiI2NjU1NTEy"
@@ -90,5 +94,43 @@ public class GoatHttpClientTest {
         } finally {
             httpclient.close();
         }
+
+        // Temporary way to choose a file in a window
+        File file;
+        do {
+            file = chooseFileGUI();
+        } while (file == null);
+
+        // Encode the file to base64
+        String encodedFile = fileToBase64String(file);
+        System.out.println(encodedFile);
+    }
+
+    public static String fileToBase64String(File file) throws IOException {
+        String encodedFile;
+        try {
+            String encodedFileName = Base64.encode(file.getName().getBytes());
+            String encodedFileContents = Base64.encode(Files.readAllBytes(file.toPath()));
+            encodedFile = encodedFileName.concat(".").concat(encodedFileContents);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            encodedFile = "";
+        }
+        return encodedFile;
+    }
+
+    public static File chooseFileGUI() {
+        File file;
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+        int result = fileChooser.showOpenDialog(new JPanel());
+        if (result == JFileChooser.APPROVE_OPTION) {
+            file = fileChooser.getSelectedFile();
+        }
+        else {
+            file = null;
+        }
+        return file;
     }
 }
