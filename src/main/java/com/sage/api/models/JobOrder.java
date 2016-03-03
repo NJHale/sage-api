@@ -1,4 +1,4 @@
-package com.sage.rest.models;
+package com.sage.api.models;
 
 public class JobOrder {
 

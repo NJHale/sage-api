@@ -1,11 +1,12 @@
-package com.sage.rest.client;
+package com.sage.api.client;
 
-import com.sage.rest.models.*;
+import com.sage.api.models.Goat;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.Scanner;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -27,11 +28,14 @@ import org.json.JSONObject;
 import javax.swing.*;
 import javax.xml.bind.JAXBException;
 
-public class GoatHttpClientTest {
+public class SageClient {
+
+    public static final String ENDPOINT_GOAT = "http://sage-ws.ddns.net:8080/sage/0.1/goats";
+
     public static void main(String[] args) throws IOException, JAXBException {
         CloseableHttpClient httpclient = HttpClients.createDefault();
         try {
-            HttpGet httpget = new HttpGet("http://sage-ws.ddns.net:8080/sage/0.1/goats");
+            HttpGet httpget = new HttpGet(ENDPOINT_GOAT);
 
             String tempToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlZjUwNTEzNjVjMjBiNDkwODg2N2UyZjg1ZGUxZTU0MWM2Y2NkM2MifQ."
             + "eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXRfaGFzaCI6ImRJeUJhNGlid2tSOUdPeU4yZEUxTWciLCJhdWQiOiI2NjU1NTEy"
@@ -43,7 +47,8 @@ public class GoatHttpClientTest {
             + "Fb7IjlDWEuPl8qJe58nqwCHFjhfQaOC4xTBazC_VdteDSsjnVLy3MFHK-uVQjl0pINt3mYco5sNvTpheWjKic9cwv8J_HDjy0eUv0-aF"
             + "GqJO_ADqGplVdpgzt_DrHHhlCyGVPfDwHsuMiGaK7MjSXnaCox5NBvy3kEcXBDDkYQihgEQ";
 
-            httpget.setHeader("IdToken", tempToken);
+            httpget.setHeader("Accept", "application/json");
+            httpget.setHeader("GoogleToken", tempToken);
             httpget.setHeader("SageToken", "SageTokenGarbage");
 
             System.out.println("Executing request " + httpget.getRequestLine());
@@ -103,21 +108,45 @@ public class GoatHttpClientTest {
 
         // Encode the file to base64
         String encodedFile = fileToBase64String(file);
-        System.out.println(encodedFile);
+        if (encodedFile != null) {
+            System.out.println(encodedFile);
+        }
     }
 
     public static String fileToBase64String(File file) throws IOException {
-        String encodedFile;
-        try {
-            String encodedFileName = Base64.encode(file.getName().getBytes());
-            String encodedFileContents = Base64.encode(Files.readAllBytes(file.toPath()));
-            encodedFile = encodedFileName.concat(".").concat(encodedFileContents);
+        if (verifyImplementsSageTask(file)) {
+            String encodedFile = null;
+            try {
+                String encodedFileName = Base64.encode(file.getName().getBytes());
+                String encodedFileContents = Base64.encode(Files.readAllBytes(file.toPath()));
+                encodedFile = encodedFileName.concat(".").concat(encodedFileContents);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return encodedFile;
         }
-        catch (IOException e) {
-            e.printStackTrace();
-            encodedFile = "";
+        else {
+            return null;
         }
-        return encodedFile;
+    }
+
+    public static boolean verifyImplementsSageTask(File file) throws IOException {
+        // Verify the file is a Java file
+        if (file.getName().split("\\.")[1].equals("java")) {
+            Scanner scanner = new Scanner(file);
+
+            // Read each line of file until "implements SageTask" is found
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine();
+                if(line.contains("implements SageTask")) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        else {
+            return false;
+        }
     }
 
     public static File chooseFileGUI() {
