@@ -1,10 +1,16 @@
 package com.sage.api.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.sage.api.models.Goat;
 import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import junit.framework.TestCase;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Created by Pat on 3/2/2016.
@@ -27,44 +33,114 @@ public class SageClientTest extends TestCase {
     }
 
     // Tests that a Java file implementing the interface SageTask passed into verifyImplementsSageTask will return true
-    public void testVerifyImplementsSageTaskWithInterface() throws Exception {
-        boolean result = testObject.verifyImplementsSageTask(isJavaWith);
-        assertEquals(true, result);
+    public void testVerifyImplementsSageTaskWithInterface() throws IOException {
+        try {
+            boolean result = testObject.verifyImplementsSageTask(isJavaWith);
+            assertEquals(true, result);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // Tests that a Java file not implementing the interface SageTask passed into verifyImplementsSageTask will return false
-    public void testVerifyImplementsSageTaskWithoutInterface() throws Exception {
-        boolean result = testObject.verifyImplementsSageTask(isJavaWithout);
-        assertEquals(false, result);
+    public void testVerifyImplementsSageTaskWithoutInterface() throws IOException {
+        try {
+            boolean result = testObject.verifyImplementsSageTask(isJavaWithout);
+            assertEquals(false, result);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // Tests that a non Java file passed into verifyImplementsSageTask will return false
-    public void testVerifyImplementsSageTaskNotJava() throws Exception {
-        boolean result = testObject.verifyImplementsSageTask(isNotJava);
-        assertEquals(false, result);
+    public void testVerifyImplementsSageTaskNotJava() throws IOException {
+        try {
+            boolean result = testObject.verifyImplementsSageTask(isNotJava);
+            assertEquals(false, result);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // Tests that a Java file implementing the interface SageTask passed into fileToBase64String will return non null
     public void testFileToBase64StringWithInterface() throws IOException {
-        String result = testObject.fileToBase64String(isJavaWith);
-        assertNotNull(result);
+        try {
+            String result = testObject.fileToBase64String(isJavaWith);
+            assertNotNull(result);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // Tests that a Java file not implementing the interface SageTask passed into fileToBase64String will return null
     public void testFileToBase64StringWithoutInterface() throws IOException {
-        String result = testObject.fileToBase64String(isJavaWithout);
-        assertNull(result);
+        try {
+            String result = testObject.fileToBase64String(isJavaWithout);
+            assertNull(result);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // Tests that a non Java file passed into fileToBase64String will return null
     public void testFileToBase64StringNotJava() throws IOException {
-        String result = testObject.fileToBase64String(isNotJava);
-        assertNull(result);
+        try {
+            String result = testObject.fileToBase64String(isNotJava);
+            assertNull(result);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // Tests that the Base64 encoded file name that is returned contains just the file name without the extension
     public void testFileToBase64StringFileNameWithoutExtension() throws IOException {
-        String result = new String(Base64.decode(testObject.fileToBase64String(isJavaWith).split("\\.")[0]), "UTF-8");
-        assertEquals(isJavaWith.getName().split("\\.")[0], result);
+        try {
+            String result = new String(Base64.decode(testObject.fileToBase64String(isJavaWith).split("\\.")[0]), "UTF-8");
+            assertEquals(isJavaWith.getName().split("\\.")[0], result);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Tests that an HTTP Request can be sent, returns JSON of an object, and builds that object in memory
+    public void testBuildObjectsFromJSON() throws IOException {
+        try {
+            String tempToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlZjUwNTEzNjVjMjBiNDkwODg2N2UyZjg1ZGUxZTU0MWM2Y2NkM2MifQ."
+                    + "eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXRfaGFzaCI6ImRJeUJhNGlid2tSOUdPeU4yZEUxTWciLCJhdWQiOiI2NjU1NTEy"
+                    + "NzQ0NjYtazllNW91bjIxY2hlN3FhbW0yY3Q5Ym42MDNkc3M2NW4uYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTQz"
+                    + "ODkyMTYwODI4ODY4Njc0NjAiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiYXpwIjoiNjY1NTUxMjc0NDY2LWs5ZTVvdW4yMWNoZTdxYW1t"
+                    + "MmN0OWJuNjAzZHNzNjVuLmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwiZW1haWwiOiJuam9obmhhbGVAZ21haWwuY29tIiwiaWF0"
+                    + "IjoxNDU2NTkxMzI2LCJleHAiOjE0NTY1OTQ5MjZ9.VX5oqY3OrnqLFaGaifu6JV_PWlgHmfBgE1c1o5cO9aNVoLxFFdjH523UvMwX1d7"
+                    + "VGkbvAety7KgWDNIftMrwV9OpyR0vGdwuxcjkb7ICOqAoQuSFFj5P-jd1r7KhCFo40e7NUHDNDBZoqjpsT0KGxui8PxfADVuhWNKjSK0"
+                    + "Fb7IjlDWEuPl8qJe58nqwCHFjhfQaOC4xTBazC_VdteDSsjnVLy3MFHK-uVQjl0pINt3mYco5sNvTpheWjKic9cwv8J_HDjy0eUv0-aF"
+                    + "GqJO_ADqGplVdpgzt_DrHHhlCyGVPfDwHsuMiGaK7MjSXnaCox5NBvy3kEcXBDDkYQihgEQ";
+            Map<String, String> map = new HashMap<String, String>();
+            map.put("age", "10");
+            map.put("aggression", "100");
+            map.put("goatId", "65");
+            map.put("weight", "500");
+            String JSONString = testObject.executeHttpRequest(testObject.ENDPOINT_GOAT, "GET", map, tempToken, "SageTokenGarbage");
+            assertNotNull(JSONString);
+            assertFalse(JSONString.equals("null"));
+            List<Object> objectList = testObject.buildObjectsFromJSON(JSONString);
+            assertNotNull(objectList);
+            List<Goat> goatList = new ArrayList<Goat>();
+            for (Object object : objectList) {
+                goatList.add((Goat) object);
+            }
+            for (Goat goat : goatList) {
+                System.out.println(goat.getGoatId());
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
