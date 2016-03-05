@@ -111,13 +111,16 @@ public class SageClient {
         if (encodedFile != null) {
             System.out.println(encodedFile);
         }
+        else {
+            System.out.println("\nFile was not a java file or did not implement the SageTask interface");
+        }
     }
 
     public static String fileToBase64String(File file) throws IOException {
         if (verifyImplementsSageTask(file)) {
             String encodedFile = null;
             try {
-                String encodedFileName = Base64.encode(file.getName().getBytes());
+                String encodedFileName = Base64.encode(file.getName().split("\\.")[0].getBytes());
                 String encodedFileContents = Base64.encode(Files.readAllBytes(file.toPath()));
                 encodedFile = encodedFileName.concat(".").concat(encodedFileContents);
             } catch (IOException e) {
