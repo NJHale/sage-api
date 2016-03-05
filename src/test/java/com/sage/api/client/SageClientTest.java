@@ -1,13 +1,11 @@
 package com.sage.api.client;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.sage.api.models.Goat;
 import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import junit.framework.TestCase;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,7 +107,7 @@ public class SageClientTest extends TestCase {
         }
     }
 
-    // Tests that an HTTP Request can be sent, returns JSON of an object, and builds that object in memory
+    // Tests that an object can be obtained and built in memory from an http request
     public void testBuildObjectsFromJSON() throws IOException {
         try {
             String tempToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlZjUwNTEzNjVjMjBiNDkwODg2N2UyZjg1ZGUxZTU0MWM2Y2NkM2MifQ."
@@ -126,15 +124,7 @@ public class SageClientTest extends TestCase {
             map.put("aggression", "100");
             map.put("goatId", "65");
             map.put("weight", "500");
-            String JSONString = testObject.executeHttpRequest(testObject.ENDPOINT_GOAT, "GET", map, tempToken, "SageTokenGarbage");
-            assertNotNull(JSONString);
-            assertFalse(JSONString.equals("null"));
-            List<Object> objectList = testObject.buildObjectsFromJSON(JSONString);
-            assertNotNull(objectList);
-            List<Goat> goatList = new ArrayList<Goat>();
-            for (Object object : objectList) {
-                goatList.add((Goat) object);
-            }
+            List<Goat> goatList = testObject.requestGoats(map, tempToken, "SageTokenGarbage");
             for (Goat goat : goatList) {
                 System.out.println(goat.getGoatId());
             }

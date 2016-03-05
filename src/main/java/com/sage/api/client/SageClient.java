@@ -5,6 +5,7 @@ import com.sage.api.models.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -31,7 +32,18 @@ public class SageClient {
 
     public static final String ENDPOINT_GOAT = "http://sage-ws.ddns.net:8080/sage/0.1/goats";
 
-    public static String executeHttpRequest(String endpoint, String requestType, Map<String,String> params,
+    public List<Goat> requestGoats(Map<String, String> map, String googleToken, String sageToken) throws IOException {
+        List<Goat> goatList = new ArrayList<Goat>();
+        List<Object> objectList = executeHttpRequestAndBuildObject(ENDPOINT_GOAT, "GET", map, googleToken, sageToken);
+        if (objectList != null) {
+            for (Object object : objectList) {
+                goatList.add((Goat)object);
+            }
+        }
+        return goatList;
+    }
+
+    public List<Object> executeHttpRequestAndBuildObject(String endpoint, String requestType, Map<String,String> params,
                                             String googleToken, String sageToken) throws IOException {
         String responseBody;
 
@@ -81,10 +93,10 @@ public class SageClient {
         else {
             return null;
         }
-        return responseBody;
+        return buildObjectsFromJSON(responseBody);
     }
 
-    public static List<Object> buildObjectsFromJSON(String JSON) {
+    public List<Object> buildObjectsFromJSON(String JSON) {
         List<Object> objects = null;
 
         ObjectMapper mapper = new ObjectMapper();
@@ -134,7 +146,7 @@ public class SageClient {
         return objects;
     }
 
-    public static String fileToBase64String(File file) throws IOException {
+    public String fileToBase64String(File file) throws IOException {
         if (verifyImplementsSageTask(file)) {
             String encodedFile = null;
             try {
@@ -151,7 +163,7 @@ public class SageClient {
         }
     }
 
-    public static boolean verifyImplementsSageTask(File file) throws IOException {
+    public boolean verifyImplementsSageTask(File file) throws IOException {
         // Verify the file is a Java file
         if (file.getName().split("\\.")[1].equals("java")) {
             Scanner scanner = new Scanner(file);
