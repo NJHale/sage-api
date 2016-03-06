@@ -34,7 +34,8 @@ public class SageClient {
 
     public List<Goat> requestGoats(Map<String, String> map, String googleToken, String sageToken) throws IOException {
         List<Goat> goatList = new ArrayList<Goat>();
-        List<Object> objectList = executeHttpRequestAndBuildObject(ENDPOINT_GOAT, "GET", map, googleToken, sageToken);
+        String responseJSON = executeHttpRequest(ENDPOINT_GOAT, "GET", map, googleToken, sageToken);
+        List<Object> objectList = buildObjectsFromJSON(responseJSON);
         if (objectList != null) {
             for (Object object : objectList) {
                 goatList.add((Goat)object);
@@ -43,7 +44,7 @@ public class SageClient {
         return goatList;
     }
 
-    public List<Object> executeHttpRequestAndBuildObject(String endpoint, String requestType, Map<String,String> params,
+    public String executeHttpRequest(String endpoint, String requestType, Map<String,String> params,
                                             String googleToken, String sageToken) throws IOException {
         String responseBody;
 
@@ -91,9 +92,9 @@ public class SageClient {
             httpclient.close();
         }
         else {
-            return null;
+            return "";
         }
-        return buildObjectsFromJSON(responseBody);
+        return responseBody;
     }
 
     public List<Object> buildObjectsFromJSON(String JSON) {
