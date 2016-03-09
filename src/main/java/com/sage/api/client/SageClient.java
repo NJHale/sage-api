@@ -1,14 +1,12 @@
 package com.sage.api.client;
 
 import com.sage.api.models.*;
+import com.sage.SageTask;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -30,7 +28,10 @@ import org.json.JSONObject;
 
 public class SageClient {
 
-    public static final String ENDPOINT_GOAT = "http://sage-ws.ddns.net:8080/sage/0.1/goats";
+    private static final String ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage/";
+    private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "0.1/goats";
+    private static final String ENDPOINT_PLACE_JOBORDER = ENDPOINT_ROOT + "jobOrders";
+    private static final String ENDPOINT_ANDROID_NODES = ENDPOINT_ROOT + "androidNodes";
 
     public List<Goat> requestGoats(Map<String, String> map, String googleToken, String sageToken) throws IOException {
         List<Goat> goatList = new ArrayList<Goat>();
@@ -44,8 +45,23 @@ public class SageClient {
         return goatList;
     }
 
-    public String executeHttpRequest(String endpoint, String requestType, Map<String,String> params,
-                                            String googleToken, String sageToken) throws IOException {
+    public int placeJobOrder(String googleToken, String sageToken, int bounty, long timeOut, byte[] data,
+                             String encodedJava) throws IOException {
+        int orderId = -1;
+        JobOrder jobOrder = new JobOrder(bounty, timeOut, data, encodedJava);
+        ObjectMapper mapper = new ObjectMapper();
+        String jobOrderJSON = mapper.writeValueAsString(jobOrder);
+        Map<String, String> map = new HashMap<String, String>();
+        map.put("jobOrder", jobOrderJSON);
+        String responseJSON = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", map, googleToken, sageToken);
+        if (!responseJSON.equals("null")) {
+            orderId = Integer.parseInt(responseJSON);
+        }
+        return orderId;
+    }
+
+    private String executeHttpRequest(String endpoint, String requestType, Map<String,String> params,
+                                      String googleToken, String sageToken) throws IOException {
         String responseBody;
 
         if (params != null && !params.isEmpty()) {
@@ -97,7 +113,7 @@ public class SageClient {
         return responseBody;
     }
 
-    public List<Object> buildObjectsFromJSON(String JSON) {
+    private List<Object> buildObjectsFromJSON(String JSON) {
         List<Object> objects = null;
 
         ObjectMapper mapper = new ObjectMapper();
@@ -147,7 +163,7 @@ public class SageClient {
         return objects;
     }
 
-    public String fileToBase64String(File file) throws IOException {
+    private String fileToBase64String(File file) throws IOException {
         if (verifyImplementsSageTask(file)) {
             String encodedFile = null;
             try {
@@ -164,7 +180,7 @@ public class SageClient {
         }
     }
 
-    public boolean verifyImplementsSageTask(File file) throws IOException {
+    private boolean verifyImplementsSageTask(File file) throws IOException {
         // Verify the file is a Java file
         if (file.getName().split("\\.")[1].equals("java")) {
             Scanner scanner = new Scanner(file);

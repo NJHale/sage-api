@@ -2,7 +2,6 @@ package com.sage.api.models;
 
 public class JobOrder {
 
-    private int ordererId;
     private int bounty;
     private long timeOut;
     private byte[] data;
@@ -13,12 +12,11 @@ public class JobOrder {
 
     }
 
-    public int getOrdererId() {
-        return ordererId;
-    }
-
-    public void setOrdererId(int ordererId) {
-        this.ordererId = ordererId;
+    public JobOrder(int bounty, long timeOut, byte[] data, String encodedJava) {
+        this.bounty = bounty;
+        this.timeOut = timeOut;
+        this.data = data;
+        this.encodedJava = encodedJava;
     }
 
     public int getBounty() {
