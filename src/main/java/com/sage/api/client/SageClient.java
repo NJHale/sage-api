@@ -10,8 +10,10 @@ import java.util.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.sun.deploy.net.URLEncoder;
 import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
@@ -29,14 +31,14 @@ import org.json.JSONObject;
 public class SageClient {
 
     private static final String ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage/";
-    private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "0.1/goats";
-    private static final String ENDPOINT_PLACE_JOBORDER = ENDPOINT_ROOT + "jobOrders";
-    private static final String ENDPOINT_ANDROID_NODES = ENDPOINT_ROOT + "androidNodes";
+    private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "alpaca/goats";
+    private static final String ENDPOINT_PLACE_JOBORDER = ENDPOINT_ROOT + "alpaca/jobOrders";
+    private static final String ENDPOINT_ANDROID_NODES = ENDPOINT_ROOT + "alpaca/androidNodes";
 
     public List<Goat> requestGoats(Map<String, String> map, String googleToken, String sageToken) throws IOException {
         List<Goat> goatList = new ArrayList<Goat>();
         String responseJSON = executeHttpRequest(ENDPOINT_GOAT, "GET", map, googleToken, sageToken);
-        List<Object> objectList = buildObjectsFromJSON(responseJSON);
+        List<Object> objectList = buildObjectsFromJSON(responseJSON, "goat");
         if (objectList != null) {
             for (Object object : objectList) {
                 goatList.add((Goat)object);
@@ -46,16 +48,19 @@ public class SageClient {
     }
 
     public int placeJobOrder(String googleToken, String sageToken, int bounty, long timeOut, byte[] data,
-                             String encodedJava) throws IOException {
+                             File javaFile) throws IOException {
         int orderId = -1;
-        JobOrder jobOrder = new JobOrder(bounty, timeOut, data, encodedJava);
-        ObjectMapper mapper = new ObjectMapper();
-        String jobOrderJSON = mapper.writeValueAsString(jobOrder);
-        Map<String, String> map = new HashMap<String, String>();
-        map.put("jobOrder", jobOrderJSON);
-        String responseJSON = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", map, googleToken, sageToken);
-        if (!responseJSON.equals("null")) {
-            orderId = Integer.parseInt(responseJSON);
+        String encodedJava = fileToBase64String(javaFile);
+        if (encodedJava != null) {
+            JobOrder jobOrder = new JobOrder(bounty, timeOut, data, encodedJava);
+            ObjectMapper mapper = new ObjectMapper();
+            String jobOrderJSON = mapper.writeValueAsString(jobOrder);
+            Map<String, String> map = new HashMap<String, String>();
+            map.put("jobOrder", URLEncoder.encode(jobOrderJSON, "UTF-8"));
+            String responseJSON = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", map, googleToken, sageToken);
+            if (!responseJSON.equals("null")) {
+                orderId = Integer.parseInt(responseJSON);
+            }
         }
         return orderId;
     }
@@ -100,10 +105,11 @@ public class SageClient {
         }
         else if (requestType.toLowerCase().equals("post")) {
             HttpPost httpRequest = new HttpPost(endpoint);
+            httpRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json;charset=UTF-8");
             httpRequest.setHeader("Accept", "application/json");
             httpRequest.setHeader("GoogleToken", googleToken);
             httpRequest.setHeader("SageToken", sageToken);
-            //System.out.println("Executing request " + httpRequest.getRequestLine());
+            System.out.println("Executing request " + httpRequest.getRequestLine());
             responseBody = httpclient.execute(httpRequest, responseHandler);
             httpclient.close();
         }
@@ -113,37 +119,37 @@ public class SageClient {
         return responseBody;
     }
 
-    private List<Object> buildObjectsFromJSON(String JSON) {
-        List<Object> objects = null;
+    private List<Object> buildObjectsFromJSON(String JSON, String identifier) {
+        List<Object> objects = new ArrayList<Object>();
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
 
         try {
             if (!JSON.equals("null")) {
-                JSONObject jsonObject = new JSONObject(JSON);
-                String objectKey = jsonObject.keys().next();
-                Object objectFromJSON = jsonObject.get(objectKey);
-                String JSONString = objectFromJSON.toString();
+                //JSONObject jsonObject = new JSONObject(JSON);
+                //String objectKey = jsonObject.keys().next();
+                //Object objectFromJSON = jsonObject.get(objectKey);
+                //String JSONString = objectFromJSON.toString();
 
-                if (objectKey.equals("goat")) {
-                    objects = mapper.readValue(JSONString, new TypeReference<List<Goat>>() {
+                if (identifier.equals("goat")) {
+                    objects = mapper.readValue(JSON, new TypeReference<List<Goat>>() {
                     });
                 }
-                else if (objectKey.equals("androidnode")) {
-                    objects = mapper.readValue(JSONString, new TypeReference<List<AndroidNode>>() {
+                else if (identifier.equals("androidnode")) {
+                    objects = mapper.readValue(JSON, new TypeReference<List<AndroidNode>>() {
                     });
                 }
-                else if (objectKey.equals("job")) {
-                    objects = mapper.readValue(JSONString, new TypeReference<List<Job>>() {
+                else if (identifier.equals("job")) {
+                    objects = mapper.readValue(JSON, new TypeReference<List<Job>>() {
                     });
                 }
-                else if (objectKey.equals("joborder")) {
-                    objects = mapper.readValue(JSONString, new TypeReference<List<JobOrder>>() {
+                else if (identifier.equals("joborder")) {
+                    objects = mapper.readValue(JSON, new TypeReference<List<JobOrder>>() {
                     });
                 }
-                else if (objectKey.equals("user")) {
-                    objects = mapper.readValue(JSONString, new TypeReference<List<User>>() {
+                else if (identifier.equals("user")) {
+                    objects = mapper.readValue(JSON, new TypeReference<List<User>>() {
                     });
                 }
                 else {

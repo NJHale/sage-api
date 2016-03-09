@@ -15,7 +15,7 @@ import java.util.Map;
  */
 public class SageClientTest extends TestCase {
 
-    //private File isNotJava, isJavaWith, isJavaWithout;
+    private File isNotJava, isJavaWith, isJavaWithout;
     private SageClient testObject;
     private String tempToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlZjUwNTEzNjVjMjBiNDkwODg2N2UyZjg1ZGUxZTU0MWM2Y2NkM2MifQ."
             + "eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXRfaGFzaCI6ImRJeUJhNGlid2tSOUdPeU4yZEUxTWciLCJhdWQiOiI2NjU1NTEy"
@@ -30,9 +30,9 @@ public class SageClientTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
         testObject = new SageClient();
-        /*isJavaWith = new File("C:\\Users\\Pat\\Documents\\cs491\\TestClassWith.java");
+        isJavaWith = new File("C:\\Users\\Pat\\Documents\\cs491\\TestClassWith.java");
         isJavaWithout = new File ("C:\\Users\\Pat\\Documents\\cs491\\TestClassWithout.java");
-        isNotJava = new File("C:\\Users\\Pat\\Documents\\cs491\\TextFile.txt");*/
+        isNotJava = new File("C:\\Users\\Pat\\Documents\\cs491\\TextFile.txt");
     }
 
     public void tearDown() throws Exception {
@@ -131,6 +131,17 @@ public class SageClientTest extends TestCase {
         }
         catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public void testPlaceJobOrder() throws IOException {
+        int orderId = testObject.placeJobOrder(tempToken, "SageTokenGarbage", 100, 1000000,
+                "SageTokenGarbage".getBytes(), isJavaWith);
+        if (orderId == -1) {
+            System.out.println("Something went wrong!");
+        }
+        else {
+            System.out.println("The orderID is: " + orderId);
         }
     }
 }
