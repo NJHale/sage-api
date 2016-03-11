@@ -1,7 +1,6 @@
 package com.sage.api.client;
 
 import com.sage.api.models.*;
-import com.sage.SageTask;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,7 +25,6 @@ import org.apache.http.util.EntityUtils;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.json.JSONObject;
 
 public class SageClient {
 
@@ -186,7 +184,7 @@ public class SageClient {
         }
     }
 
-    private boolean verifyImplementsSageTask(File file) throws IOException {
+    /*private boolean verifyImplementsSageTask(File file) throws IOException {
         // Verify the file is a Java file
         if (file.getName().split("\\.")[1].equals("java")) {
             Scanner scanner = new Scanner(file);
@@ -196,6 +194,97 @@ public class SageClient {
                 String line = scanner.nextLine();
                 if(line.contains("implements SageTask")) {
                     return true;
+                }
+            }
+            return false;
+        }
+        else {
+            return false;
+        }
+    }*/
+
+    /*
+        TODO: Comment this method to explain what's going on.
+     */
+    public boolean verifyImplementsSageTask(File file) throws IOException {
+        if (file.getName().split("\\.")[1].toLowerCase().equals("java")) {
+            Scanner scanner = new Scanner(file);
+            String line = "";
+            boolean multilineMode = false;
+            boolean redoLine = false;
+
+            // Read each line of file, getting rid of comments, until "implements SageTask" is found
+            while (scanner.hasNextLine()) {
+                if (!redoLine) {
+                    line = scanner.nextLine();
+                }
+                else {
+                    redoLine = false;
+                }
+                System.out.println(line);
+                if (multilineMode) {
+                    if (line.contains("*/")) {
+                        multilineMode = false;
+                        redoLine = true;
+                        line = line.substring(line.indexOf("*/")+2,line.length());
+                    }
+                }
+                else {
+                    if (line.contains("//") || line.contains("/*")) {
+                        if (line.contains("//") && line.contains("/*")) {
+                            if (line.indexOf("/*") > line.indexOf("//")) {
+                                line = line.substring(0,line.indexOf("//"));
+                                if (line.contains("implements SageTask")) {
+                                    return true;
+                                }
+                            }
+                            else {
+                                // multiline comment logic
+                                if (line.contains("*/") && line.indexOf("*/") > line.indexOf(("/*"))+1) {
+                                    line = line.substring(0,line.indexOf("/*")) + line.substring(line.indexOf("*/")+2,line.length());
+                                    redoLine = true;
+                                }
+                                else {
+                                    if (line.substring(0,line.indexOf("/*")).contains("implements SageTask")) {
+                                        System.out.println("This");
+                                        return true;
+                                    }
+                                    else {
+                                        multilineMode = true;
+                                    }
+                                }
+                            }
+                        }
+                        else {
+                            if (line.contains("//")) {
+                                line = line.substring(0,line.indexOf("//"));
+                                if (line.contains("implements SageTask")) {
+                                    return true;
+                                }
+                            }
+                            else {
+                                // multiline comment logic
+                                if (line.contains("*/") && line.indexOf("*/") > line.indexOf(("/*")+1)) {
+                                    line = line.substring(0,line.indexOf("/*")) + line.substring(line.indexOf("*/")+2,line.length());
+                                    redoLine = true;
+                                }
+                                else {
+                                    if (line.substring(0,line.indexOf("/*")).contains("implements SageTask")) {
+                                        return true;
+                                    }
+                                    else {
+                                        multilineMode = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        if (line.contains("implements SageTask")) {
+                            return true;
+
+                        }
+                    }
                 }
             }
             return false;

@@ -16,6 +16,7 @@ import java.util.Map;
 public class SageClientTest extends TestCase {
 
     private File isNotJava, isJavaWith, isJavaWithout;
+    private File classWithSageTask;
     private SageClient testObject;
     private String tempToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlZjUwNTEzNjVjMjBiNDkwODg2N2UyZjg1ZGUxZTU0MWM2Y2NkM2MifQ."
             + "eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXRfaGFzaCI6ImRJeUJhNGlid2tSOUdPeU4yZEUxTWciLCJhdWQiOiI2NjU1NTEy"
@@ -30,9 +31,10 @@ public class SageClientTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
         testObject = new SageClient();
-        isJavaWith = new File("C:\\Users\\Pat\\Documents\\cs491\\TestClassWith.java");
-        isJavaWithout = new File ("C:\\Users\\Pat\\Documents\\cs491\\TestClassWithout.java");
-        isNotJava = new File("C:\\Users\\Pat\\Documents\\cs491\\TextFile.txt");
+        isJavaWith = new File("C:\\Users\\Pat\\Desktop\\Sage\\TestClassWith.java");
+        isJavaWithout = new File ("C:\\Users\\Pat\\Desktop\\Sage\\TestClassWithout.java");
+        isNotJava = new File("C:\\Users\\Pat\\Desktop\\Sage\\TextFile.txt");
+        classWithSageTask = new File("C:\\Users\\Pat\\Desktop\\Sage\\sage-api\\src\\test\\java\\ClassWithSageTask.java");
     }
 
     public void tearDown() throws Exception {
@@ -40,7 +42,7 @@ public class SageClientTest extends TestCase {
     }
 
     // Tests that a Java file implementing the interface SageTask passed into verifyImplementsSageTask will return true
-    /*public void testVerifyImplementsSageTaskWithInterface() throws IOException {
+    public void testVerifyImplementsSageTaskWithInterface() throws IOException {
         try {
             boolean result = testObject.verifyImplementsSageTask(isJavaWith);
             assertEquals(true, result);
@@ -48,10 +50,10 @@ public class SageClientTest extends TestCase {
         catch (IOException e) {
             e.printStackTrace();
         }
-    }*/
+    }
 
     // Tests that a Java file not implementing the interface SageTask passed into verifyImplementsSageTask will return false
-    /*public void testVerifyImplementsSageTaskWithoutInterface() throws IOException {
+    public void testVerifyImplementsSageTaskWithoutInterface() throws IOException {
         try {
             boolean result = testObject.verifyImplementsSageTask(isJavaWithout);
             assertEquals(false, result);
@@ -59,10 +61,10 @@ public class SageClientTest extends TestCase {
         catch (IOException e) {
             e.printStackTrace();
         }
-    }*/
+    }
 
     // Tests that a non Java file passed into verifyImplementsSageTask will return false
-    /*public void testVerifyImplementsSageTaskNotJava() throws IOException {
+    public void testVerifyImplementsSageTaskNotJava() throws IOException {
         try {
             boolean result = testObject.verifyImplementsSageTask(isNotJava);
             assertEquals(false, result);
@@ -70,7 +72,7 @@ public class SageClientTest extends TestCase {
         catch (IOException e) {
             e.printStackTrace();
         }
-    }*/
+    }
 
     // Tests that a Java file implementing the interface SageTask passed into fileToBase64String will return non null
     /*public void testFileToBase64StringWithInterface() throws IOException {
@@ -136,7 +138,7 @@ public class SageClientTest extends TestCase {
 
     public void testPlaceJobOrder() throws IOException {
         int orderId = testObject.placeJobOrder(tempToken, "SageTokenGarbage", 100, 1000000,
-                "SageTokenGarbage".getBytes(), isJavaWith);
+                "SageTokenGarbage".getBytes(), classWithSageTask);
         if (orderId == -1) {
             System.out.println("Something went wrong!");
         }
