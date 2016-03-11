@@ -204,12 +204,14 @@ public class SageClient {
     }*/
 
     /*
-        TODO: Comment this method to explain what's going on.
+        TODO: Comment this method to explain what's going on.  Condense logic branches to eliminate redundant code.
      */
     public boolean verifyImplementsSageTask(File file) throws IOException {
         if (file.getName().split("\\.")[1].toLowerCase().equals("java")) {
             Scanner scanner = new Scanner(file);
             String line = "";
+            boolean foundPackage = false;
+            boolean foundImplements = false;
             boolean multilineMode = false;
             boolean redoLine = false;
 
@@ -221,7 +223,6 @@ public class SageClient {
                 else {
                     redoLine = false;
                 }
-                System.out.println(line);
                 if (multilineMode) {
                     if (line.contains("*/")) {
                         multilineMode = false;
@@ -234,7 +235,13 @@ public class SageClient {
                         if (line.contains("//") && line.contains("/*")) {
                             if (line.indexOf("/*") > line.indexOf("//")) {
                                 line = line.substring(0,line.indexOf("//"));
-                                if (line.contains("implements SageTask")) {
+                                if (!foundPackage && line.contains("import com.sage.task.SageTask;")) {
+                                    foundPackage = true;
+                                }
+                                if (!foundImplements && line.contains("implements SageTask")) {
+                                    foundImplements = true;
+                                }
+                                if (foundPackage && foundImplements) {
                                     return true;
                                 }
                             }
@@ -245,8 +252,13 @@ public class SageClient {
                                     redoLine = true;
                                 }
                                 else {
-                                    if (line.substring(0,line.indexOf("/*")).contains("implements SageTask")) {
-                                        System.out.println("This");
+                                    if (!foundPackage && line.substring(0,line.indexOf("/*")).contains("import com.sage.task.SageTask;")) {
+                                        foundPackage = true;
+                                    }
+                                    if (!foundImplements && line.substring(0,line.indexOf("/*")).contains("implements SageTask")) {
+                                        foundImplements = true;
+                                    }
+                                    if (foundPackage && foundImplements) {
                                         return true;
                                     }
                                     else {
@@ -258,7 +270,13 @@ public class SageClient {
                         else {
                             if (line.contains("//")) {
                                 line = line.substring(0,line.indexOf("//"));
+                                if (line.contains("import com.sage.task.SageTask")) {
+                                    foundPackage = true;
+                                }
                                 if (line.contains("implements SageTask")) {
+                                    foundImplements = true;
+                                }
+                                if (foundPackage && foundImplements) {
                                     return true;
                                 }
                             }
@@ -269,7 +287,13 @@ public class SageClient {
                                     redoLine = true;
                                 }
                                 else {
-                                    if (line.substring(0,line.indexOf("/*")).contains("implements SageTask")) {
+                                    if (!foundPackage && line.substring(0,line.indexOf("/*")).contains("import com.sage.task.SageTask;")) {
+                                        foundPackage = true;
+                                    }
+                                    if (!foundImplements && line.substring(0,line.indexOf("/*")).contains("implements SageTask")) {
+                                        return true;
+                                    }
+                                    if (foundPackage && foundImplements) {
                                         return true;
                                     }
                                     else {
@@ -280,9 +304,14 @@ public class SageClient {
                         }
                     }
                     else {
-                        if (line.contains("implements SageTask")) {
+                        if (!foundPackage && line.contains("import com.sage.task.SageTask;")) {
+                            foundPackage = true;
+                        }
+                        if (!foundImplements && line.contains("implements SageTask")) {
+                            foundImplements = true;
+                        }
+                        if (foundPackage && foundImplements) {
                             return true;
-
                         }
                     }
                 }
