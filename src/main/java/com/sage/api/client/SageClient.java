@@ -18,6 +18,7 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -35,7 +36,7 @@ public class SageClient {
 
     public List<Goat> requestGoats(Map<String, String> map, String googleToken, String sageToken) throws IOException {
         List<Goat> goatList = new ArrayList<Goat>();
-        String responseJSON = executeHttpRequest(ENDPOINT_GOAT, "GET", map, googleToken, sageToken);
+        String responseJSON = executeHttpRequest(ENDPOINT_GOAT, "GET", map, googleToken, sageToken, null);
         List<Object> objectList = buildObjectsFromJSON(responseJSON, "goat");
         if (objectList != null) {
             for (Object object : objectList) {
@@ -53,9 +54,7 @@ public class SageClient {
             JobOrder jobOrder = new JobOrder(bounty, timeOut, data, encodedJava);
             ObjectMapper mapper = new ObjectMapper();
             String jobOrderJSON = mapper.writeValueAsString(jobOrder);
-            Map<String, String> map = new HashMap<String, String>();
-            map.put("jobOrder", URLEncoder.encode(jobOrderJSON, "UTF-8"));
-            String responseJSON = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", map, googleToken, sageToken);
+            String responseJSON = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", null, googleToken, sageToken, jobOrderJSON);
             if (!responseJSON.equals("null")) {
                 orderId = Integer.parseInt(responseJSON);
             }
@@ -64,15 +63,20 @@ public class SageClient {
     }
 
     private String executeHttpRequest(String endpoint, String requestType, Map<String,String> params,
-                                      String googleToken, String sageToken) throws IOException {
+                                      String googleToken, String sageToken, String content) throws IOException {
         String responseBody;
 
-        if (params != null && !params.isEmpty()) {
-            endpoint = endpoint.concat("?");
-            for (Map.Entry<String, String> entry : params.entrySet()) {
-                endpoint = endpoint.concat(entry.getKey().concat("=").concat(entry.getValue()).concat("&"));
+
+        if (requestType.toLowerCase().equals("get")) {
+            if (params != null && !params.isEmpty()) {
+                endpoint = endpoint.concat("?");
+                for (Map.Entry<String, String> entry : params.entrySet()) {
+                    endpoint = endpoint.concat(entry.getKey().concat("=").concat(entry.getValue()).concat("&"));
+                }
+                endpoint = endpoint.substring(0, endpoint.length()-1);
             }
-            endpoint = endpoint.substring(0, endpoint.length()-1);
+
+
         }
 
         CloseableHttpClient httpclient = HttpClients.createDefault();
@@ -103,10 +107,12 @@ public class SageClient {
         }
         else if (requestType.toLowerCase().equals("post")) {
             HttpPost httpRequest = new HttpPost(endpoint);
-            httpRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json;charset=UTF-8");
+            httpRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
             httpRequest.setHeader("Accept", "application/json");
             httpRequest.setHeader("GoogleToken", googleToken);
             httpRequest.setHeader("SageToken", sageToken);
+            StringEntity entity = new StringEntity(content);
+            httpRequest.setEntity(entity);
             System.out.println("Executing request " + httpRequest.getRequestLine());
             responseBody = httpclient.execute(httpRequest, responseHandler);
             httpclient.close();
@@ -184,27 +190,8 @@ public class SageClient {
         }
     }
 
-    /*private boolean verifyImplementsSageTask(File file) throws IOException {
-        // Verify the file is a Java file
-        if (file.getName().split("\\.")[1].equals("java")) {
-            Scanner scanner = new Scanner(file);
-
-            // Read each line of file until "implements SageTask" is found
-            while (scanner.hasNextLine()) {
-                String line = scanner.nextLine();
-                if(line.contains("implements SageTask")) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        else {
-            return false;
-        }
-    }*/
-
     /*
-        TODO: Comment this method to explain what's going on.  Condense logic branches to eliminate redundant code.
+        TODO: Comment this method to explain what's going on.
      */
     public boolean verifyImplementsSageTask(File file) throws IOException {
         if (file.getName().split("\\.")[1].toLowerCase().equals("java")) {
@@ -215,7 +202,7 @@ public class SageClient {
             boolean multilineMode = false;
             boolean redoLine = false;
 
-            // Read each line of file, getting rid of comments, until "implements SageTask" is found
+            // Read each line of file, ignoring comments, until the implements and package import statements are found
             while (scanner.hasNextLine()) {
                 if (!redoLine) {
                     line = scanner.nextLine();
@@ -232,73 +219,37 @@ public class SageClient {
                 }
                 else {
                     if (line.contains("//") || line.contains("/*")) {
-                        if (line.contains("//") && line.contains("/*")) {
-                            if (line.indexOf("/*") > line.indexOf("//")) {
-                                line = line.substring(0,line.indexOf("//"));
-                                if (!foundPackage && line.contains("import com.sage.task.SageTask;")) {
-                                    foundPackage = true;
-                                }
-                                if (!foundImplements && line.contains("implements SageTask")) {
-                                    foundImplements = true;
-                                }
-                                if (foundPackage && foundImplements) {
-                                    return true;
-                                }
+                        if ((line.contains("//") && line.contains("/*") && line.indexOf("*/") > line.indexOf("//")) || (line.contains("//") && !line.contains("/*"))) {
+                            // Single line comment logic
+                            line = line.substring(0,line.indexOf("//"));
+                            if (!foundPackage && line.contains("import com.sage.task.SageTask;")) {
+                                foundPackage = true;
                             }
-                            else {
-                                // multiline comment logic
-                                if (line.contains("*/") && line.indexOf("*/") > line.indexOf(("/*"))+1) {
-                                    line = line.substring(0,line.indexOf("/*")) + line.substring(line.indexOf("*/")+2,line.length());
-                                    redoLine = true;
-                                }
-                                else {
-                                    if (!foundPackage && line.substring(0,line.indexOf("/*")).contains("import com.sage.task.SageTask;")) {
-                                        foundPackage = true;
-                                    }
-                                    if (!foundImplements && line.substring(0,line.indexOf("/*")).contains("implements SageTask")) {
-                                        foundImplements = true;
-                                    }
-                                    if (foundPackage && foundImplements) {
-                                        return true;
-                                    }
-                                    else {
-                                        multilineMode = true;
-                                    }
-                                }
+                            if (!foundImplements && line.contains("implements SageTask")) {
+                                foundImplements = true;
+                            }
+                            if (foundPackage && foundImplements) {
+                                return true;
                             }
                         }
                         else {
-                            if (line.contains("//")) {
-                                line = line.substring(0,line.indexOf("//"));
-                                if (line.contains("import com.sage.task.SageTask")) {
+                            // Multiline comment logic
+                            if (line.contains("*/") && line.indexOf("*/") > line.indexOf(("/*"))+1) {
+                                line = line.substring(0,line.indexOf("/*")) + line.substring(line.indexOf("*/")+2,line.length());
+                                redoLine = true;
+                            }
+                            else {
+                                if (!foundPackage && line.substring(0,line.indexOf("/*")).contains("import com.sage.task.SageTask;")) {
                                     foundPackage = true;
                                 }
-                                if (line.contains("implements SageTask")) {
+                                if (!foundImplements && line.substring(0,line.indexOf("/*")).contains("implements SageTask")) {
                                     foundImplements = true;
                                 }
                                 if (foundPackage && foundImplements) {
                                     return true;
                                 }
-                            }
-                            else {
-                                // multiline comment logic
-                                if (line.contains("*/") && line.indexOf("*/") > line.indexOf(("/*")+1)) {
-                                    line = line.substring(0,line.indexOf("/*")) + line.substring(line.indexOf("*/")+2,line.length());
-                                    redoLine = true;
-                                }
                                 else {
-                                    if (!foundPackage && line.substring(0,line.indexOf("/*")).contains("import com.sage.task.SageTask;")) {
-                                        foundPackage = true;
-                                    }
-                                    if (!foundImplements && line.substring(0,line.indexOf("/*")).contains("implements SageTask")) {
-                                        return true;
-                                    }
-                                    if (foundPackage && foundImplements) {
-                                        return true;
-                                    }
-                                    else {
-                                        multilineMode = true;
-                                    }
+                                    multilineMode = true;
                                 }
                             }
                         }
