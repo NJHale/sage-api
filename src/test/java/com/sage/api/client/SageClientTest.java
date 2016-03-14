@@ -136,6 +136,7 @@ public class SageClientTest extends TestCase {
         }
     }
 
+    // Test the placeJobOrder endpoint
     public void testPlaceJobOrder() throws IOException {
         int orderId = testObject.placeJobOrder(tempToken, "SageTokenGarbage", 100, 1000000,
                 "SageTokenGarbage".getBytes(), classWithSageTask);

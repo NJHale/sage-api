@@ -9,7 +9,6 @@ import java.util.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.sun.deploy.net.URLEncoder;
 import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
@@ -32,6 +31,7 @@ public class SageClient {
     private static final String ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage/";
     private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "alpaca/goats";
     private static final String ENDPOINT_PLACE_JOBORDER = ENDPOINT_ROOT + "alpaca/jobOrders";
+    private static final String ENDPOINT_GET_JOB = ENDPOINT_ROOT + "alpaca/jobs";
     private static final String ENDPOINT_ANDROID_NODES = ENDPOINT_ROOT + "alpaca/androidNodes";
 
     public List<Goat> requestGoats(Map<String, String> map, String googleToken, String sageToken) throws IOException {
@@ -113,7 +113,7 @@ public class SageClient {
             httpRequest.setHeader("SageToken", sageToken);
             StringEntity entity = new StringEntity(content);
             httpRequest.setEntity(entity);
-            System.out.println("Executing request " + httpRequest.getRequestLine());
+            //System.out.println("Executing request " + httpRequest.getRequestLine());
             responseBody = httpclient.execute(httpRequest, responseHandler);
             httpclient.close();
         }
@@ -146,10 +146,6 @@ public class SageClient {
                 }
                 else if (identifier.equals("job")) {
                     objects = mapper.readValue(JSON, new TypeReference<List<Job>>() {
-                    });
-                }
-                else if (identifier.equals("joborder")) {
-                    objects = mapper.readValue(JSON, new TypeReference<List<JobOrder>>() {
                     });
                 }
                 else if (identifier.equals("user")) {
@@ -190,55 +186,55 @@ public class SageClient {
         }
     }
 
-    /*
-        TODO: Comment this method to explain what's going on.
-     */
     public boolean verifyImplementsSageTask(File file) throws IOException {
-        if (file.getName().split("\\.")[1].toLowerCase().equals("java")) {
-            Scanner scanner = new Scanner(file);
-            String line = "";
-            boolean foundPackage = false;
-            boolean foundImplements = false;
-            boolean multilineMode = false;
-            boolean redoLine = false;
+        if (file.getName().split("\\.")[1].toLowerCase().equals("java")) {  // First check if the file is a Java file
+            Scanner scanner = new Scanner(file);                            // Scanner for reading the file
+            String line = "";                                               // Initialize line holder
+            boolean foundPackage = false;                                   // Flag: If SageTask package has been found
+            boolean foundImplements = false;                                // Flag: If implement SageTask has been found
+            boolean multilineMode = false;                                  // Flag: Tracking if currently in ml mode
+            boolean redoLine = false;                                       // Flag: If new line will be read from file
 
-            // Read each line of file, ignoring comments, until the implements and package import statements are found
-            while (scanner.hasNextLine()) {
-                if (!redoLine) {
-                    line = scanner.nextLine();
+            while (scanner.hasNextLine()) {                                 // While there are more lines in the file
+                if (!redoLine) {                                            // If flag is not set to re-test last line
+                    line = scanner.nextLine();                              // Read in next line from file
                 }
-                else {
-                    redoLine = false;
+                else {                                                      // Otherwise
+                    redoLine = false;                                       // Set flag to false, and re-test line
                 }
-                if (multilineMode) {
-                    if (line.contains("*/")) {
-                        multilineMode = false;
-                        redoLine = true;
-                        line = line.substring(line.indexOf("*/")+2,line.length());
+                if (multilineMode) {                                        // If we are currently in multiline mode
+                    if (line.contains("*/")) {                              // Check for end of multiline comment
+                        multilineMode = false;                              // Disable multiline mode
+                        redoLine = true;                                    // Flag so this line will be re-tested
+                        line = line.substring(line.indexOf("*/")+2,line.length());  // Cut out multiline comment content
                     }
                 }
-                else {
-                    if (line.contains("//") || line.contains("/*")) {
-                        if ((line.contains("//") && line.contains("/*") && line.indexOf("*/") > line.indexOf("//")) || (line.contains("//") && !line.contains("/*"))) {
+                else {                                                      // If not in multiline mode
+                    if (line.contains("//") || line.contains("/*")) {       // If the line contains a comment
+                        if ((line.contains("//") && line.contains("/*") && line.indexOf("*/") > line.indexOf("//"))
+                                || (line.contains("//") && !line.contains("/*"))) {     // If single line comment
                             // Single line comment logic
-                            line = line.substring(0,line.indexOf("//"));
-                            if (!foundPackage && line.contains("import com.sage.task.SageTask;")) {
-                                foundPackage = true;
+                            line = line.substring(0,line.indexOf("//"));    // Set line to part before comment
+                            if (!foundPackage && line.contains("import com.sage.task.SageTask;")) { // Check for package
+                                foundPackage = true;                        // Package statement is found
                             }
-                            if (!foundImplements && line.contains("implements SageTask")) {
-                                foundImplements = true;
+                            if (!foundImplements && line.contains("implements SageTask")) { // Check for implements
+                                foundImplements = true;                     // Implements statement is found
                             }
-                            if (foundPackage && foundImplements) {
-                                return true;
+                            if (foundPackage && foundImplements) {          // If both package and implements are found
+                                return true;                                // File is verified, return true
                             }
                         }
-                        else {
+                        else {                                              // Otherwise, it's a multiline comment
                             // Multiline comment logic
-                            if (line.contains("*/") && line.indexOf("*/") > line.indexOf(("/*"))+1) {
-                                line = line.substring(0,line.indexOf("/*")) + line.substring(line.indexOf("*/")+2,line.length());
-                                redoLine = true;
+                            if (line.contains("*/") && line.indexOf("*/") >
+                                    line.indexOf(("/*"))+1) {               // If comment ends on the same line
+                                line = line.substring(0,line.indexOf("/*")) +
+                                        line.substring(line.indexOf("*/")+2,line.length()); // Cut out the ml comment
+                                redoLine = true;                            // Mark line for re-testing
                             }
-                            else {
+                            else {                                          // Otherwise, comment ends on future line
+                                // Check part of line before comment for statements and enable ml mode if not found
                                 if (!foundPackage && line.substring(0,line.indexOf("/*")).contains("import com.sage.task.SageTask;")) {
                                     foundPackage = true;
                                 }
@@ -254,7 +250,8 @@ public class SageClient {
                             }
                         }
                     }
-                    else {
+                    else {                                                  // Otherwise line does not have a comment
+                        // Check line for statements
                         if (!foundPackage && line.contains("import com.sage.task.SageTask;")) {
                             foundPackage = true;
                         }
