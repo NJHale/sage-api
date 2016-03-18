@@ -145,6 +145,7 @@ public class SageClient {
     private void newGoogleAuth() throws IOException, InterruptedException {
         Preferences userPreferences = Preferences.userNodeForPackage(getClass());
         Map<String,String> newAuthParams = new HashMap<String,String>();
+        Map<String,String> pollParams = new HashMap<String,String>();
         String responseJSON;
         JSONObject JSON;
         newAuthParams.put("client_id",CLIENT_ID);
@@ -158,9 +159,11 @@ public class SageClient {
         int interval = JSON.getInt("interval");
         System.out.println("Please enter " + verificationURL + " into a browser and use the code "
                 + userCode + " to log in");
-        newAuthParams.put("client_secret",CLIENT_SECRET);
-        newAuthParams.put("code",deviceCode);
-        newAuthParams.put("grant_type","http://oauth.net/grant_type/device/1.0");
+        pollParams.put("client_id",CLIENT_ID);
+        pollParams.put("client_secret",CLIENT_SECRET);
+        pollParams.put("code",deviceCode);
+        pollParams.put("scope","email profile");
+        pollParams.put("grant_type","http://oauth.net/grant_type/device/1.0");
         boolean authenticated = false;
         while (!authenticated) {
             if (System.currentTimeMillis() >= expiresAt) {
@@ -173,13 +176,13 @@ public class SageClient {
                 verificationURL = JSON.getString("verification_url");
                 expiresAt = JSON.getInt("expires_in")*1000 + System.currentTimeMillis();
                 interval = JSON.getInt("interval");
-                newAuthParams.put("code",deviceCode);
+                pollParams.put("code",deviceCode);
                 System.out.println("Please enter " + verificationURL + " into a browser and use the code "
                         + userCode + " to log in");
             }
             else {
                 // Poll and check if the user authorized
-                responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_TOKEN,newAuthParams);
+                responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_TOKEN,pollParams);
                 JSON = new JSONObject(responseJSON);
                 if (JSON.has("error")) {
                     // Not yet authenticated, wait "interval" seconds and then try again
