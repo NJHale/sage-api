@@ -6,9 +6,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.prefs.Preferences;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.sun.deploy.net.URLEncoder;
 import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
@@ -16,6 +19,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -25,6 +29,7 @@ import org.apache.http.util.EntityUtils;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.json.JSONObject;
 
 public class SageClient {
 
@@ -34,9 +39,20 @@ public class SageClient {
     private static final String ENDPOINT_GET_JOB = ENDPOINT_ROOT + "alpaca/jobs";
     private static final String ENDPOINT_ANDROID_NODES = ENDPOINT_ROOT + "alpaca/androidNodes";
 
-    public List<Goat> requestGoats(Map<String, String> map, String googleToken, String sageToken) throws IOException {
+    /*
+    private static final String CLIENT_ID = "665551274466-k9e5oun21che7qamm2ct9bn603dss65n.apps.googleusercontent.com";
+    private static final String CLIENT_SECRET = "T3MOi4HvzoAo-ayP3Mv-g6TT";
+    */
+
+    private static final String CLIENT_ID = "304221060563-b5mrhqtkl8adrpo42kb4inb9s20po7pb.apps.googleusercontent.com";
+    private static final String CLIENT_SECRET = "le1PtSeQiLzfdTgftwf6qIZy";
+
+    private static final String ENDPOINT_GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/device/code";
+    private static final String ENDPOINT_GOOGLE_TOKEN = "https://www.googleapis.com/oauth2/v4/token";
+
+    public List<Goat> requestGoats(Map<String, String> map) throws IOException, InterruptedException {
         List<Goat> goatList = new ArrayList<Goat>();
-        String responseJSON = executeHttpRequest(ENDPOINT_GOAT, "GET", map, googleToken, sageToken, null);
+        String responseJSON = executeHttpRequest(ENDPOINT_GOAT, "GET", map, getGoogleId(), "SageTokenGarbage", null);
         List<Object> objectList = buildObjectsFromJSON(responseJSON, "goat");
         if (objectList != null) {
             for (Object object : objectList) {
@@ -46,15 +62,16 @@ public class SageClient {
         return goatList;
     }
 
-    public int placeJobOrder(String googleToken, String sageToken, int bounty, long timeOut, byte[] data,
-                             File javaFile) throws IOException {
+    public int placeJobOrder(int bounty, long timeOut, byte[] data, File javaFile)
+            throws IOException, InterruptedException {
         int orderId = -1;
         String encodedJava = fileToBase64String(javaFile);
         if (encodedJava != null) {
             JobOrder jobOrder = new JobOrder(bounty, timeOut, data, encodedJava);
             ObjectMapper mapper = new ObjectMapper();
             String jobOrderJSON = mapper.writeValueAsString(jobOrder);
-            String responseJSON = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", null, googleToken, sageToken, jobOrderJSON);
+            String responseJSON = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", null, getGoogleId(),
+                    "SageTokenGarbage", jobOrderJSON);
             if (!responseJSON.equals("null")) {
                 orderId = Integer.parseInt(responseJSON);
             }
@@ -62,39 +79,157 @@ public class SageClient {
         return orderId;
     }
 
+    public Job getJob(int jobId) throws IOException, InterruptedException {
+        Job job;
+        String responseJSON = executeHttpRequest(ENDPOINT_GET_JOB + "/" + jobId, "GET", null, getGoogleId(),
+                "SageTokenGarbage", null);
+        List<Object> objectList = buildObjectsFromJSON(responseJSON, "job");
+        job = (Job)objectList.get(0);
+        return job;
+    }
+
+    public boolean pollJob(int jobId) throws IOException, InterruptedException {
+        Job job = getJob(jobId);
+        JobStatus status = job.getStatus();
+        if (status == JobStatus.DONE || status == JobStatus.ERROR || status == JobStatus.TIMED_OUT) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    public String getGoogleId() throws IOException, InterruptedException {
+        Preferences userPreferences = Preferences.userNodeForPackage(getClass());
+        String googleId = userPreferences.get("SAGE_GOOGLEID", "EMPTY");
+        String googleAccessToken = userPreferences.get("SAGE_GOOGLEACCESS", "EMPTY");
+        String googleRefreshToken = userPreferences.get("SAGE_GOOGLEREFRESH", "EMPTY");
+        long expiredTime = userPreferences.getLong("SAGE_GOOGLEEXPIRE", 0);
+        if (!googleId.equals("EMPTY") && !googleAccessToken.equals("EMPTY") && expiredTime > System.currentTimeMillis()) {
+            return googleId;
+        }
+        else if (!googleId.equals("EMPTY") && !googleAccessToken.equals("EMPTY") && !googleRefreshToken.equals("EMPTY")
+                && expiredTime <= System.currentTimeMillis()) {
+            // Attempt to use refresh token to get new access token.  If fail, run new authorization logic.
+            Map<String,String> refreshTokenParams = new HashMap<String, String>();
+            refreshTokenParams.put("client_id",CLIENT_ID);
+            refreshTokenParams.put("client_secret",CLIENT_SECRET);
+            refreshTokenParams.put("refresh_token",googleRefreshToken);
+            refreshTokenParams.put("grant_type","refresh_token");
+            String responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_TOKEN,refreshTokenParams);
+            System.out.println(responseJSON);
+            JSONObject JSON = new JSONObject(responseJSON);
+            if (JSON.has("access_token")) {
+                userPreferences.put("SAGE_GOOGLEACCESS", JSON.getString("access_token"));
+                userPreferences.put("SAGE_GOOGLEID", JSON.getString("id_token"));
+                userPreferences.putLong("SAGE_GOOGLEEXPIRE", JSON.getLong("expire")*1000 + System.currentTimeMillis());
+            }
+        }
+        else {
+            newGoogleAuth();
+            return userPreferences.get("SAGE_GOOGLEID","EMPTY");
+        }
+
+        newGoogleAuth();
+        return userPreferences.get("SAGE_GOOGLEID","EMPTY");
+    }
+
+    public void googleLogout() {
+        Preferences userPreferences = Preferences.userNodeForPackage(getClass());
+        userPreferences.remove("SAGE_GOOGLEID");
+        userPreferences.remove("SAGE_GOOGLEACCESS");
+        userPreferences.remove("SAGE_GOOGLEREFRESH");
+        userPreferences.remove("SAGE_GOOGLEEXPIRE");
+    }
+
+    private void newGoogleAuth() throws IOException, InterruptedException {
+        Preferences userPreferences = Preferences.userNodeForPackage(getClass());
+        Map<String,String> newAuthParams = new HashMap<String,String>();
+        String responseJSON;
+        JSONObject JSON;
+        newAuthParams.put("client_id",CLIENT_ID);
+        newAuthParams.put("scope","email profile");
+        responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_AUTH,newAuthParams);
+        JSON = new JSONObject(responseJSON);
+        String deviceCode = JSON.getString("device_code");
+        String userCode = JSON.getString("user_code");
+        String verificationURL = JSON.getString("verification_url");
+        long expiresAt = JSON.getInt("expires_in")*1000 + System.currentTimeMillis();
+        int interval = JSON.getInt("interval");
+        System.out.println("Please enter " + verificationURL + " into a browser and use the code "
+                + userCode + " to log in");
+        newAuthParams.put("client_secret",CLIENT_SECRET);
+        newAuthParams.put("code",deviceCode);
+        newAuthParams.put("grant_type","http://oauth.net/grant_type/device/1.0");
+        boolean authenticated = false;
+        while (!authenticated) {
+            if (System.currentTimeMillis() >= expiresAt) {
+                // Have to get new user code, old code expired
+                System.out.println("Last url and code are now expired.");
+                responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_AUTH,newAuthParams);
+                JSON = new JSONObject(responseJSON);
+                deviceCode = JSON.getString("device_code");
+                userCode = JSON.getString("user_code");
+                verificationURL = JSON.getString("verification_url");
+                expiresAt = JSON.getInt("expires_in")*1000 + System.currentTimeMillis();
+                interval = JSON.getInt("interval");
+                newAuthParams.put("code",deviceCode);
+                System.out.println("Please enter " + verificationURL + " into a browser and use the code "
+                        + userCode + " to log in");
+            }
+            else {
+                // Poll and check if the user authorized
+                responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_TOKEN,newAuthParams);
+                JSON = new JSONObject(responseJSON);
+                if (JSON.has("error")) {
+                    // Not yet authenticated, wait "interval" seconds and then try again
+                    try {
+                        TimeUnit.SECONDS.sleep(interval);
+                    }
+                    catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                else {
+                    // User has authenticated, get access token, refresh token, id.  Mark authenticated true.
+                    authenticated = true;
+                    userPreferences.put("SAGE_GOOGLEACCESS", JSON.getString("access_token"));
+                    userPreferences.put("SAGE_GOOGLEREFRESH", JSON.getString("refresh_token"));
+                    userPreferences.put("SAGE_GOOGLEID", JSON.getString("id_token"));
+                    userPreferences.putLong("SAGE_GOOGLEEXPIRE",
+                            JSON.getInt("expires_in")*1000 + System.currentTimeMillis());
+                }
+            }
+        }
+    }
+
+    private String executeGoogleHttpRequest(String endpoint, Map<String,String> params) throws IOException {
+        String responseBody;
+
+        CloseableHttpClient httpclient = HttpClients.createDefault();
+        ResponseHandler<String> responseHandler = createGoogleResponseHandler();
+
+        HttpPost httpRequest = new HttpPost(endpoint);
+        httpRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-www-form-urlencoded");
+        StringEntity messageBody = new StringEntity(queryStringBuilder(params));
+        httpRequest.setEntity(messageBody);
+        //System.out.println("Executing request " + httpRequest.getRequestLine());
+        responseBody = httpclient.execute(httpRequest, responseHandler);
+        httpclient.close();
+
+        return responseBody;
+    }
+
     private String executeHttpRequest(String endpoint, String requestType, Map<String,String> params,
                                       String googleToken, String sageToken, String content) throws IOException {
         String responseBody;
 
-
-        if (requestType.toLowerCase().equals("get")) {
-            if (params != null && !params.isEmpty()) {
-                endpoint = endpoint.concat("?");
-                for (Map.Entry<String, String> entry : params.entrySet()) {
-                    endpoint = endpoint.concat(entry.getKey().concat("=").concat(entry.getValue()).concat("&"));
-                }
-                endpoint = endpoint.substring(0, endpoint.length()-1);
-            }
-
-
+        if (requestType.toLowerCase().equals("get") && params != null && !params.isEmpty()) {
+            endpoint = endpoint.concat("?").concat(queryStringBuilder(params));
         }
 
         CloseableHttpClient httpclient = HttpClients.createDefault();
-
-        // Create a custom response handler
-        ResponseHandler<String> responseHandler = new ResponseHandler<String>() {
-
-            public String handleResponse(
-                    final HttpResponse response) throws IOException {
-                int status = response.getStatusLine().getStatusCode();
-                if (status >= 200 && status < 300) {
-                    HttpEntity entity = response.getEntity();
-                    return entity != null ? EntityUtils.toString(entity) : null;
-                } else {
-                    throw new ClientProtocolException("Unexpected response status: " + status);
-                }
-            }
-        };
+        ResponseHandler<String> responseHandler = createResponseHandler();
 
         if (requestType.toLowerCase().equals("get")) {
             HttpGet httpRequest = new HttpGet(endpoint);
@@ -121,6 +256,53 @@ public class SageClient {
             return "";
         }
         return responseBody;
+    }
+
+    private ResponseHandler<String> createGoogleResponseHandler() {
+        // Create a custom response handler
+        ResponseHandler<String> responseHandler = new ResponseHandler<String>() {
+
+            public String handleResponse(
+                    final HttpResponse response) throws IOException {
+                int status = response.getStatusLine().getStatusCode();
+                if ((status >= 200 && status < 300) || status == 400) {
+                    HttpEntity entity = response.getEntity();
+                    return entity != null ? EntityUtils.toString(entity) : null;
+                } else {
+                    throw new ClientProtocolException("Unexpected response status: " + status);
+                }
+            }
+        };
+        return responseHandler;
+    }
+
+    private ResponseHandler<String> createResponseHandler() {
+        // Create a custom response handler
+        ResponseHandler<String> responseHandler = new ResponseHandler<String>() {
+
+            public String handleResponse(
+                    final HttpResponse response) throws IOException {
+                int status = response.getStatusLine().getStatusCode();
+                if (status >= 200 /*&& status < 300*/) {
+                    HttpEntity entity = response.getEntity();
+                    return entity != null ? EntityUtils.toString(entity) : null;
+                } else {
+                    throw new ClientProtocolException("Unexpected response status: " + status);
+                }
+            }
+        };
+        return responseHandler;
+    }
+
+    private String queryStringBuilder(Map<String,String> params) {
+        String queryString = "";
+        if (params != null && !params.isEmpty()) {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                queryString = queryString.concat(entry.getKey().concat("=").concat(entry.getValue()).concat("&"));
+            }
+            queryString = queryString.substring(0, queryString.length()-1);
+        }
+        return queryString;
     }
 
     private List<Object> buildObjectsFromJSON(String JSON, String identifier) {
@@ -186,7 +368,7 @@ public class SageClient {
         }
     }
 
-    public boolean verifyImplementsSageTask(File file) throws IOException {
+    private boolean verifyImplementsSageTask(File file) throws IOException {
         if (file.getName().split("\\.")[1].toLowerCase().equals("java")) {  // First check if the file is a Java file
             Scanner scanner = new Scanner(file);                            // Scanner for reading the file
             String line = "";                                               // Initialize line holder
@@ -215,7 +397,7 @@ public class SageClient {
                                 || (line.contains("//") && !line.contains("/*"))) {     // If single line comment
                             // Single line comment logic
                             line = line.substring(0,line.indexOf("//"));    // Set line to part before comment
-                            if (!foundPackage && line.contains("import com.sage.task.SageTask;")) { // Check for package
+                            if (!foundPackage && line.contains("import com.sage.task.SageTask")) { // Check for package
                                 foundPackage = true;                        // Package statement is found
                             }
                             if (!foundImplements && line.contains("implements SageTask")) { // Check for implements
@@ -235,7 +417,7 @@ public class SageClient {
                             }
                             else {                                          // Otherwise, comment ends on future line
                                 // Check part of line before comment for statements and enable ml mode if not found
-                                if (!foundPackage && line.substring(0,line.indexOf("/*")).contains("import com.sage.task.SageTask;")) {
+                                if (!foundPackage && line.substring(0,line.indexOf("/*")).contains("import com.sage.task.SageTask")) {
                                     foundPackage = true;
                                 }
                                 if (!foundImplements && line.substring(0,line.indexOf("/*")).contains("implements SageTask")) {
@@ -252,7 +434,7 @@ public class SageClient {
                     }
                     else {                                                  // Otherwise line does not have a comment
                         // Check line for statements
-                        if (!foundPackage && line.contains("import com.sage.task.SageTask;")) {
+                        if (!foundPackage && line.contains("import com.sage.task.SageTask")) {
                             foundPackage = true;
                         }
                         if (!foundImplements && line.contains("implements SageTask")) {
