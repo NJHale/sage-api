@@ -117,12 +117,12 @@ public class SageClient {
             refreshTokenParams.put("refresh_token",googleRefreshToken);
             refreshTokenParams.put("grant_type","refresh_token");
             String responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_TOKEN,refreshTokenParams);
-            System.out.println(responseJSON);
             JSONObject JSON = new JSONObject(responseJSON);
             if (JSON.has("access_token")) {
                 userPreferences.put("SAGE_GOOGLEACCESS", JSON.getString("access_token"));
                 userPreferences.put("SAGE_GOOGLEID", JSON.getString("id_token"));
-                userPreferences.putLong("SAGE_GOOGLEEXPIRE", JSON.getLong("expire")*1000 + System.currentTimeMillis());
+                userPreferences.putLong("SAGE_GOOGLEEXPIRE", JSON.getLong("expires_in")*1000 + System.currentTimeMillis());
+                return userPreferences.get("SAGE_GOOGLEID","EMPTY");
             }
         }
         else {
