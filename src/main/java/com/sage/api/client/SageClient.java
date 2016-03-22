@@ -106,7 +106,8 @@ public class SageClient {
         String googleAccessToken = userPreferences.get("SAGE_GOOGLEACCESS", "EMPTY");
         String googleRefreshToken = userPreferences.get("SAGE_GOOGLEREFRESH", "EMPTY");
         long expiredTime = userPreferences.getLong("SAGE_GOOGLEEXPIRE", 0);
-        if (!googleId.equals("EMPTY") && !googleAccessToken.equals("EMPTY") && expiredTime > System.currentTimeMillis()) {
+        if (!googleId.equals("EMPTY") && !googleAccessToken.equals("EMPTY")
+                && expiredTime > System.currentTimeMillis()) {
             // Verify google access token
             Map<String,String> verifyAccessTokenParams = new HashMap<String, String>();
             verifyAccessTokenParams.put("access_token",googleAccessToken);
@@ -126,10 +127,11 @@ public class SageClient {
             refreshTokenParams.put("grant_type","refresh_token");
             String responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_TOKEN,refreshTokenParams);
             JSONObject JSON = new JSONObject(responseJSON);
-            if (JSON.has("access_token")) {
+            if (!JSON.has("error")) {
                 userPreferences.put("SAGE_GOOGLEACCESS", JSON.getString("access_token"));
                 userPreferences.put("SAGE_GOOGLEID", JSON.getString("id_token"));
-                userPreferences.putLong("SAGE_GOOGLEEXPIRE", JSON.getLong("expires_in")*1000 + System.currentTimeMillis());
+                userPreferences.putLong("SAGE_GOOGLEEXPIRE", JSON.getLong("expires_in")*1000
+                        + System.currentTimeMillis());
                 return userPreferences.get("SAGE_GOOGLEID","EMPTY");
             }
         }
