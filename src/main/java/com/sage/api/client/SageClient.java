@@ -49,6 +49,7 @@ public class SageClient {
 
     private static final String ENDPOINT_GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/device/code";
     private static final String ENDPOINT_GOOGLE_TOKEN = "https://www.googleapis.com/oauth2/v4/token";
+    private static final String ENDPOINT_GOOGLE_TOKENINFO = "https://www.googleapis.com/oauth2/v1/tokeninfo";
 
     public List<Goat> requestGoats(Map<String, String> map) throws IOException, InterruptedException {
         List<Goat> goatList = new ArrayList<Goat>();
@@ -106,11 +107,18 @@ public class SageClient {
         String googleRefreshToken = userPreferences.get("SAGE_GOOGLEREFRESH", "EMPTY");
         long expiredTime = userPreferences.getLong("SAGE_GOOGLEEXPIRE", 0);
         if (!googleId.equals("EMPTY") && !googleAccessToken.equals("EMPTY") && expiredTime > System.currentTimeMillis()) {
-            return googleId;
+            // Verify google access token
+            Map<String,String> verifyAccessTokenParams = new HashMap<String, String>();
+            verifyAccessTokenParams.put("access_token",googleAccessToken);
+            String responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_TOKENINFO,verifyAccessTokenParams);
+            JSONObject JSON = new JSONObject(responseJSON);
+            if (!JSON.has("error")) {
+                return googleId;
+            }
         }
-        else if (!googleId.equals("EMPTY") && !googleAccessToken.equals("EMPTY") && !googleRefreshToken.equals("EMPTY")
-                && expiredTime <= System.currentTimeMillis()) {
-            // Attempt to use refresh token to get new access token.  If fail, run new authorization logic.
+
+        if (!googleRefreshToken.equals("EMPTY")) {
+            // Attempt to use refresh token to get new access token.
             Map<String,String> refreshTokenParams = new HashMap<String, String>();
             refreshTokenParams.put("client_id",CLIENT_ID);
             refreshTokenParams.put("client_secret",CLIENT_SECRET);
@@ -124,10 +132,6 @@ public class SageClient {
                 userPreferences.putLong("SAGE_GOOGLEEXPIRE", JSON.getLong("expires_in")*1000 + System.currentTimeMillis());
                 return userPreferences.get("SAGE_GOOGLEID","EMPTY");
             }
-        }
-        else {
-            newGoogleAuth();
-            return userPreferences.get("SAGE_GOOGLEID","EMPTY");
         }
 
         newGoogleAuth();
