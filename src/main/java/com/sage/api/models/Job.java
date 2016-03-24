@@ -1,44 +1,65 @@
 package com.sage.api.models;
 
+
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlTransient;
 import java.util.Date;
 
+/**
+ * Created by Nick Hale on 2/21/16.
+ * @author Nick Hale
+ *         NJohnHale@gmail.com
+ *
+ */
+@XmlRootElement
 public class Job {
 
+    /**
+     * Hibernate Annotations for ORM persistence
+     */
     private int jobId;
+
     private int ordererId;
+
     private int nodeId;
-    private int bounty;
+
     private JobStatus status;
+
     private long timeOut;
+
     private String encodedDex;
-    private String encodedJava;
+
     private byte[] data;
+
     private byte[] result;
+
     private Date completion;
 
     /**
      * Default constructor
      */
-    public Job() {
+    public Job() { }
 
-    }
-
+    /**
+     * Jersey JAXB Annotations
+     */
+    @XmlElement(name = "jobId")
     public int getJobId() {
         return jobId;
     }
 
-    public void setJobId(int jobId) {
-        this.jobId = jobId;
-    }
+    public void setJobId(int jobId) { this.jobId = jobId; }
 
-    public int getOrdererId() {
-        return ordererId;
-    }
+    @XmlElement(name = "ordererId")
+    public int getOrdererId() { return ordererId; }
 
-    public void setOrdererId(int ordererId) {
-        this.ordererId = ordererId;
-    }
+    public void setOrdererId(int ordererId) { this.ordererId = ordererId; }
 
+    @XmlElement(name = "nodeId")
     public int getNodeId() {
         return nodeId;
     }
@@ -47,14 +68,8 @@ public class Job {
         this.nodeId = nodeId;
     }
 
-    public int getBounty() {
-        return bounty;
-    }
 
-    public void setBounty(int bounty) {
-        this.bounty = bounty;
-    }
-
+    @XmlElement(name = "status")
     public JobStatus getStatus() {
         return status;
     }
@@ -63,6 +78,8 @@ public class Job {
         this.status = status;
     }
 
+    @XmlElement(name = "timeout")
+    @JsonProperty("timeout")
     public long getTimeOut() {
         return timeOut;
     }
@@ -71,22 +88,12 @@ public class Job {
         this.timeOut = timeOut;
     }
 
-    public String getEncodedDex() {
-        return encodedDex;
-    }
+    @XmlElement(name = "encodedDex")
+    public String getEncodedDex() { return encodedDex; }
 
-    public void setEncodedDex(String encodedDex) {
-        this.encodedDex = encodedDex;
-    }
+    public void setEncodedDex(String encodedDex) { this.encodedDex = encodedDex; }
 
-    public String getEncodedJava() {
-        return encodedJava;
-    }
-
-    public void setEncodedJava(String encodedJava) {
-        this.encodedJava = encodedJava;
-    }
-
+    @XmlElement(name = "data")
     public byte[] getData() {
         return data;
     }
@@ -95,6 +102,7 @@ public class Job {
         this.data = data;
     }
 
+    @XmlElement(name = "result")
     public byte[] getResult() {
         return result;
     }
@@ -103,11 +111,9 @@ public class Job {
         this.result = result;
     }
 
-    public Date getCompletion() {
-        return completion;
-    }
+    @XmlElement(name = "completion")
+    public Date getCompletion() { return completion; }
 
-    public void setCompletion(Date completion) {
-        this.completion = completion;
-    }
+    public void setCompletion(Date completion) { this.completion = completion; }
+
 }

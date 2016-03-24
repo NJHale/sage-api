@@ -34,6 +34,7 @@ import org.json.JSONObject;
 public class SageClient {
 
     private static final String ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage/";
+    //private static final String ENDPOINT_ROOT = "http://localhost:8080/";//ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage/";
     private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "alpaca/goats";
     private static final String ENDPOINT_PLACE_JOBORDER = ENDPOINT_ROOT + "alpaca/jobOrders";
     private static final String ENDPOINT_GET_JOB = ENDPOINT_ROOT + "alpaca/jobs";
@@ -80,23 +81,23 @@ public class SageClient {
     }
 
     public Job getJob(int jobId) throws IOException, InterruptedException {
-        Job job;
+        Job job = null;
         String responseJSON = executeHttpRequest(ENDPOINT_GET_JOB + "/" + jobId, "GET", null, getGoogleId(),
                 "SageTokenGarbage", null);
         List<Object> objectList = buildObjectsFromJSON(responseJSON, "job");
-        job = (Job)objectList.get(0);
+        System.out.println("objectList size: " + objectList.size());
+
+        if (objectList.size() > 0) job = (Job)objectList.get(0);
+
         return job;
     }
 
     public boolean pollJob(int jobId) throws IOException, InterruptedException {
         Job job = getJob(jobId);
-        JobStatus status = job.getStatus();
-        if (status == JobStatus.DONE || status == JobStatus.ERROR || status == JobStatus.TIMED_OUT) {
+        if (job == null)
             return true;
-        }
-        else {
-            return false;
-        }
+        JobStatus status = job.getStatus();
+        return status == JobStatus.DONE || status == JobStatus.ERROR || status == JobStatus.TIMED_OUT;
     }
 
     public String getGoogleId() throws IOException, InterruptedException {
@@ -315,7 +316,7 @@ public class SageClient {
         mapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
 
         try {
-            if (!JSON.equals("null")) {
+            if (JSON != null && !JSON.equals("null") &&  JSON.length() > 0) {
                 //JSONObject jsonObject = new JSONObject(JSON);
                 //String objectKey = jsonObject.keys().next();
                 //Object objectFromJSON = jsonObject.get(objectKey);

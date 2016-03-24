@@ -34,10 +34,10 @@ public class SageClientTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
         testObject = new SageClient();
-        isJavaWith = new File("C:\\Users\\Pat\\Desktop\\Sage\\TestClassWith.java");
-        isJavaWithout = new File ("C:\\Users\\Pat\\Desktop\\Sage\\TestClassWithout.java");
-        isNotJava = new File("C:\\Users\\Pat\\Desktop\\Sage\\TextFile.txt");
-        classWithSageTask = new File("C:\\Users\\Pat\\Desktop\\Sage\\sage-api\\src\\test\\java\\ClassWithSageTask.java");
+//        isJavaWith = new File("C:\\Users\\Pat\\Desktop\\Sage\\TestClassWith.java");
+//        isJavaWithout = new File ("C:\\Users\\Pat\\Desktop\\Sage\\TestClassWithout.java");
+//        isNotJava = new File("C:\\Users\\Pat\\Desktop\\Sage\\TextFile.txt");
+        classWithSageTask = new File("/home/nhale/Documents/Spring2016/CS491/dexProof/Hello.java");
     }
 
     public void tearDown() throws Exception {
@@ -155,15 +155,15 @@ public class SageClientTest extends TestCase {
 
     public void testGetJob() throws IOException, InterruptedException {
         try {
-            Job job = testObject.getJob(27);
+            Job job = testObject.getJob(114);
             System.out.println(job.getJobId());
             System.out.println(job.getOrdererId());
             System.out.println(job.getNodeId());
-            System.out.println(job.getBounty());
+            //System.out.println(job.getBounty());
             System.out.println(job.getStatus());
             System.out.println(job.getTimeOut());
             System.out.println(job.getEncodedDex());
-            System.out.println(job.getEncodedJava());
+           // System.out.println(job.getEncodedJava());
             System.out.println(job.getData());
             System.out.println(job.getResult());
             System.out.println(job.getCompletion());
@@ -175,7 +175,7 @@ public class SageClientTest extends TestCase {
 
     public void testPollJob() throws IOException, InterruptedException {
         try {
-            boolean completed = testObject.pollJob(27);
+            boolean completed = testObject.pollJob(101);
             if (completed) {
                 System.out.println("Completed");
             }
