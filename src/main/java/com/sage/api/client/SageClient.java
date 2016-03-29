@@ -39,11 +39,6 @@ public class SageClient {
     private static final String ENDPOINT_GET_JOB = ENDPOINT_ROOT + "alpaca/jobs";
     private static final String ENDPOINT_ANDROID_NODES = ENDPOINT_ROOT + "alpaca/androidNodes";
 
-    /*
-    private static final String CLIENT_ID = "665551274466-k9e5oun21che7qamm2ct9bn603dss65n.apps.googleusercontent.com";
-    private static final String CLIENT_SECRET = "T3MOi4HvzoAo-ayP3Mv-g6TT";
-    */
-
     private static final String CLIENT_ID = "304221060563-b5mrhqtkl8adrpo42kb4inb9s20po7pb.apps.googleusercontent.com";
     private static final String CLIENT_SECRET = "le1PtSeQiLzfdTgftwf6qIZy";
 
