@@ -76,23 +76,32 @@ public class SageClient {
     }
 
     public Job getJob(int jobId) throws IOException, InterruptedException {
-        Job job;
+        Job job = null;
         String responseJSON = executeHttpRequest(ENDPOINT_GET_JOB + "/" + jobId, "GET", null, getGoogleId(),
                 "SageTokenGarbage", null);
+        System.out.println(responseJSON);
         List<Object> objectList = buildObjectsFromJSON(responseJSON, "job");
-        job = (Job)objectList.get(0);
+        if (objectList.size() > 0) {
+            job = (Job)objectList.get(0);
+        }
         return job;
     }
 
     public boolean pollJob(int jobId) throws IOException, InterruptedException {
         Job job = getJob(jobId);
-        JobStatus status = job.getStatus();
-        if (status == JobStatus.DONE || status == JobStatus.ERROR || status == JobStatus.TIMED_OUT) {
+        if (job == null) {
             return true;
         }
-        else {
-            return false;
-        }
+        JobStatus status = job.getStatus();
+        return status == JobStatus.DONE || status == JobStatus.ERROR || status == JobStatus.TIMED_OUT;
+    }
+
+    public void googleLogout() {
+        Preferences userPreferences = Preferences.userNodeForPackage(getClass());
+        userPreferences.remove("SAGE_GOOGLEID");
+        userPreferences.remove("SAGE_GOOGLEACCESS");
+        userPreferences.remove("SAGE_GOOGLEREFRESH");
+        userPreferences.remove("SAGE_GOOGLEEXPIRE");
     }
 
     private String getGoogleId() throws IOException, InterruptedException {
@@ -133,14 +142,6 @@ public class SageClient {
 
         newGoogleAuth();
         return userPreferences.get("SAGE_GOOGLEID","EMPTY");
-    }
-
-    public void googleLogout() {
-        Preferences userPreferences = Preferences.userNodeForPackage(getClass());
-        userPreferences.remove("SAGE_GOOGLEID");
-        userPreferences.remove("SAGE_GOOGLEACCESS");
-        userPreferences.remove("SAGE_GOOGLEREFRESH");
-        userPreferences.remove("SAGE_GOOGLEEXPIRE");
     }
 
     private void newGoogleAuth() throws IOException, InterruptedException {
@@ -316,7 +317,7 @@ public class SageClient {
         mapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
 
         try {
-            if (!JSON.equals("null")) {
+            if (JSON != null && !JSON.equals("null") &&  JSON.length() > 0) {
                 //JSONObject jsonObject = new JSONObject(JSON);
                 //String objectKey = jsonObject.keys().next();
                 //Object objectFromJSON = jsonObject.get(objectKey);
