@@ -95,7 +95,7 @@ public class SageClient {
         }
     }
 
-    public String getGoogleId() throws IOException, InterruptedException {
+    private String getGoogleId() throws IOException, InterruptedException {
         Preferences userPreferences = Preferences.userNodeForPackage(getClass());
         String googleId = userPreferences.get("SAGE_GOOGLEID", "EMPTY");
         String googleAccessToken = userPreferences.get("SAGE_GOOGLEACCESS", "EMPTY");

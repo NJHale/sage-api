@@ -187,9 +187,4 @@ public class SageClientTest extends TestCase {
             e.printStackTrace();
         }
     }
-
-    public void testGetGoogleId() throws IOException, InterruptedException {
-        String googleId = testObject.getGoogleId();
-        System.out.println(googleId);
-    }
 }
