@@ -37,6 +37,7 @@ public class SageClient {
     private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "alpaca/goats";
     private static final String ENDPOINT_PLACE_JOBORDER = ENDPOINT_ROOT + "alpaca/jobOrders";
     private static final String ENDPOINT_GET_JOB = ENDPOINT_ROOT + "alpaca/jobs";
+    private static final String ENDPOINT_POLL_JOB = ENDPOINT_ROOT + "alpaca/jobs/jobid/status";
     private static final String ENDPOINT_ANDROID_NODES = ENDPOINT_ROOT + "alpaca/androidNodes";
 
     private static final String CLIENT_ID = "304221060563-b5mrhqtkl8adrpo42kb4inb9s20po7pb.apps.googleusercontent.com";
@@ -44,7 +45,6 @@ public class SageClient {
 
     private static final String ENDPOINT_GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/device/code";
     private static final String ENDPOINT_GOOGLE_TOKEN = "https://www.googleapis.com/oauth2/v4/token";
-    private static final String ENDPOINT_GOOGLE_TOKENINFO = "https://www.googleapis.com/oauth2/v1/tokeninfo";
 
     public List<Goat> requestGoats(Map<String, String> map) throws IOException, InterruptedException {
         List<Goat> goatList = new ArrayList<Goat>();
@@ -88,12 +88,17 @@ public class SageClient {
     }
 
     public boolean pollJob(int jobId) throws IOException, InterruptedException {
-        Job job = getJob(jobId);
-        if (job == null) {
-            return true;
+        String responseJSON = executeHttpRequest(ENDPOINT_POLL_JOB.replaceAll("jobid",Integer.toString(jobId)),
+                "GET",null,"","SageTokenGarbage","");
+        System.out.println(ENDPOINT_POLL_JOB.replaceAll("jobid",Integer.toString(jobId)));
+        System.out.println(responseJSON);
+        List<Object> objectList = buildObjectsFromJSON(responseJSON, "jobstatus");
+        JobStatus jobStatus = null;
+        if (objectList.size() > 0) {
+            jobStatus = (JobStatus)objectList.get(0);
         }
-        JobStatus status = job.getStatus();
-        return status == JobStatus.DONE || status == JobStatus.ERROR || status == JobStatus.TIMED_OUT;
+
+        return jobStatus == null || jobStatus == JobStatus.DONE || jobStatus == JobStatus.ERROR || jobStatus == JobStatus.TIMED_OUT;
     }
 
     public void googleLogout() {
@@ -112,14 +117,7 @@ public class SageClient {
         long expiredTime = userPreferences.getLong("SAGE_GOOGLEEXPIRE", 0);
         if (!googleId.equals("EMPTY") && !googleAccessToken.equals("EMPTY")
                 && expiredTime > System.currentTimeMillis()) {
-            // Verify google access token
-            Map<String,String> verifyAccessTokenParams = new HashMap<String, String>();
-            verifyAccessTokenParams.put("access_token",googleAccessToken);
-            String responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_TOKENINFO,verifyAccessTokenParams);
-            JSONObject JSON = new JSONObject(responseJSON);
-            if (!JSON.has("error")) {
-                return googleId;
-            }
+            return googleId;
         }
 
         if (!googleRefreshToken.equals("EMPTY")) {
@@ -337,6 +335,10 @@ public class SageClient {
                 }
                 else if (identifier.equals("user")) {
                     objects = mapper.readValue(JSON, new TypeReference<List<User>>() {
+                    });
+                }
+                else if (identifier.equals("jobstatus")) {
+                    objects = mapper.readValue(JSON, new TypeReference<List<JobStatus>>() {
                     });
                 }
                 else {
