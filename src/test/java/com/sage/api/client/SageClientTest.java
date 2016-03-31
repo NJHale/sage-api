@@ -37,7 +37,7 @@ public class SageClientTest extends TestCase {
         //isJavaWith = new File("C:\\Users\\Pat\\Desktop\\Sage\\TestClassWith.java");
         //isJavaWithout = new File ("C:\\Users\\Pat\\Desktop\\Sage\\TestClassWithout.java");
         //isNotJava = new File("C:\\Users\\Pat\\Desktop\\Sage\\TextFile.txt");
-        classWithSageTask = new File("C:\\Users\\Pat\\Documents\\cs491\\sage-api\\src\\test\\ClassWithSageTask.java");
+        classWithSageTask = new File("C:\\Users\\Pat\\Documents\\cs491\\sage-api\\src\\test\\java\\ClassWithSageTask.java");
     }
 
     public void tearDown() throws Exception {
