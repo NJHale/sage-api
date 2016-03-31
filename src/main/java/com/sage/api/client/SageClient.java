@@ -90,8 +90,6 @@ public class SageClient {
     public boolean pollJob(int jobId) throws IOException, InterruptedException {
         String responseJSON = executeHttpRequest(ENDPOINT_POLL_JOB.replaceAll("jobid",Integer.toString(jobId)),
                 "GET",null,"","SageTokenGarbage","");
-        System.out.println(ENDPOINT_POLL_JOB.replaceAll("jobid",Integer.toString(jobId)));
-        System.out.println(responseJSON);
         List<Object> objectList = buildObjectsFromJSON(responseJSON, "jobstatus");
         JobStatus jobStatus = null;
         if (objectList.size() > 0) {
