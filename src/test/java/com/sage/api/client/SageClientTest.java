@@ -155,18 +155,22 @@ public class SageClientTest extends TestCase {
 
     public void testGetJob() throws IOException, InterruptedException {
         try {
-            Job job = testObject.getJob(199);
-            assertNotNull(job);
-            System.out.println(job.getJobId());
-            System.out.println(job.getBounty());
-            System.out.println(job.getOrdererId());
-            System.out.println(job.getNodeId());
-            System.out.println(job.getStatus());
-            System.out.println(job.getTimeout());
-            System.out.println(job.getEncodedDex());
-            System.out.println(job.getData());
-            System.out.println(job.getResult());
-            System.out.println(job.getCompletion());
+            Job job = testObject.getJob(2479);
+            if (job != null) {
+                System.out.println(job.getJobId());
+                System.out.println(job.getBounty());
+                System.out.println(job.getOrdererId());
+                System.out.println(job.getNodeId());
+                System.out.println(job.getStatus());
+                System.out.println(job.getTimeout());
+                System.out.println(job.getEncodedDex());
+                System.out.println(job.getData());
+                System.out.println(job.getResult());
+                System.out.println(job.getCompletion());
+            }
+            else {
+                System.out.println("Job was null: Either didn't exist or you do not have access to it");
+            }
         }
         catch (IOException e) {
             e.printStackTrace();
@@ -175,7 +179,7 @@ public class SageClientTest extends TestCase {
 
     public void testPollJob() throws IOException, InterruptedException {
         try {
-            boolean completed = testObject.pollJob(199);
+            boolean completed = testObject.pollJob(2588);
             if (completed) {
                 System.out.println("Completed");
             }
