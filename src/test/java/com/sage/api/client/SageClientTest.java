@@ -155,7 +155,7 @@ public class SageClientTest extends TestCase {
 
     public void testGetJob() throws IOException, InterruptedException {
         try {
-            Job job = testObject.getJob(2479);
+            Job job = testObject.getJob(199);
             if (job != null) {
                 System.out.println(job.getJobId());
                 System.out.println(job.getBounty());
@@ -179,7 +179,7 @@ public class SageClientTest extends TestCase {
 
     public void testPollJob() throws IOException, InterruptedException {
         try {
-            boolean completed = testObject.pollJob(2588);
+            boolean completed = testObject.pollJob(199);
             if (completed) {
                 System.out.println("Completed");
             }
