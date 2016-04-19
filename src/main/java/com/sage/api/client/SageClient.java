@@ -32,7 +32,7 @@ import org.json.JSONObject;
 
 public class SageClient {
 
-    private static final String ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage/sage-bison/";
+    private static final String ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage-bison/";
     private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "goats";
     private static final String ENDPOINT_PLACE_JOBORDER = ENDPOINT_ROOT + "jobOrders";
     private static final String ENDPOINT_GET_JOB = ENDPOINT_ROOT + "jobs";
@@ -47,13 +47,23 @@ public class SageClient {
     private static final String ENDPOINT_GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/device/code";
     private static final String ENDPOINT_GOOGLE_TOKEN = "https://www.googleapis.com/oauth2/v4/token";
 
-    private static UserCredential userCredential;
+    private static String userGoogleId;
     private static long userGoogleExpiryTime = 0;
     private static String userGoogleAccessToken;
     private static String userGoogleRefreshToken;
-    private static SageToken userSageToken;
+    private static String userSageToken;
     private static long userSageTokenExpiryTime = 0;
     private static int lastStatusCode = 0;
+
+    public SageClient() {
+        Preferences userPreferences = Preferences.userNodeForPackage(getClass());
+        userGoogleId = userPreferences.get("SAGE_GOOGLEID",null);
+        userGoogleExpiryTime = userPreferences.getLong("SAGE_GOOGLEEXPIRE",0);
+        userGoogleAccessToken = userPreferences.get("SAGE_GOOGLEACCESS",null);
+        userGoogleRefreshToken = userPreferences.get("SAGE_GOOGLEREFRESH",null);
+        userSageToken = userPreferences.get("SAGE_SAGETOKEN",null);
+        userSageTokenExpiryTime = userPreferences.getLong("SAGE_SAGEEXPIRE",0);
+    }
 
     public List<Goat> requestGoats(Map<String, String> map) throws IOException, InterruptedException {
         List<Goat> goatList = new ArrayList<Goat>();
@@ -107,35 +117,46 @@ public class SageClient {
         return jobStatus == null || jobStatus == JobStatus.DONE || jobStatus == JobStatus.ERROR || jobStatus == JobStatus.TIMED_OUT;
     }
 
-    public void logout() {
+    public void logoutGoogle() {
         Preferences userPreferences = Preferences.userNodeForPackage(getClass());
         userPreferences.remove("SAGE_GOOGLEID");
         userPreferences.remove("SAGE_GOOGLEACCESS");
         userPreferences.remove("SAGE_GOOGLEREFRESH");
         userPreferences.remove("SAGE_GOOGLEEXPIRE");
-        userCredential = null;
+        userGoogleId = null;
         userGoogleAccessToken = null;
         userGoogleRefreshToken = null;
         userGoogleExpiryTime = 0;
+    }
+
+    public void logoutSage() {
+        Preferences userPreferences = Preferences.userNodeForPackage(getClass());
+        userPreferences.remove("SAGE_SAGETOKEN");
+        userPreferences.remove("SAGE_EXPIRE");
         userSageToken = null;
         userSageTokenExpiryTime = 0;
     }
 
+    public void logout() {
+        logoutGoogle();
+        logoutSage();
+    }
+
     private String getSageToken() throws IOException, InterruptedException {
-        if (userSageToken != null && userSageTokenExpiryTime > System.currentTimeMillis()) {
-            return userSageToken.getSageTokenStr();
+        if (userSageTokenExpiryTime > System.currentTimeMillis() && userSageToken != null) {
+            return userSageToken;
         }
         else {
             String sageToken = null;
             String googleId = getGoogleId();
             if (googleId != null) {
+                Preferences userPreferences = Preferences.userNodeForPackage(getClass());
                 UserCredential credential = new UserCredential();
                 credential.setGoogleIdStr(googleId);
                 ObjectMapper mapper = new ObjectMapper();
                 String credentialJSON = mapper.writeValueAsString(credential);
-                String responseJSON = executeHttpRequest(ENDPOINT_SAGETOKEN, "POST", null, "", credentialJSON);
+                String responseJSON = executeHttpRequest(ENDPOINT_SAGETOKEN, "POST", null, null, credentialJSON);
                 if (lastStatusCode == 401) {
-                    Preferences userPreferences = Preferences.userNodeForPackage(getClass());
                     userPreferences.putLong("SAGE_GOOGLEEXPIRE",0);
                     userGoogleExpiryTime = 0;
                     return getSageToken();
@@ -143,12 +164,11 @@ public class SageClient {
                 if (responseJSON != null && !responseJSON.equals("")) {
                     List<Object> objectList = buildObjectsFromJSON(responseJSON, "sagetoken");
                     SageToken token = (SageToken)objectList.get(0);
-                    if (userSageToken == null) {
-                        userSageToken = new SageToken();
-                    }
-                    userSageToken.setSageTokenStr(token.getSageTokenStr());
-                    userSageTokenExpiryTime = System.currentTimeMillis() + 1800000;
-                    sageToken = userSageToken.getSageTokenStr();
+                    userPreferences.put("SAGE_SAGETOKEN",token.getSageTokenStr());
+                    userPreferences.putLong("SAGE_SAGEEXPIRE",System.currentTimeMillis() + 3600000);
+                    userSageToken = token.getSageTokenStr();
+                    userSageTokenExpiryTime = System.currentTimeMillis() + 3600000;
+                    sageToken = userSageToken;
                 }
             }
             System.out.println(sageToken); // Debug
@@ -157,51 +177,34 @@ public class SageClient {
     }
 
     private String getGoogleId() throws IOException, InterruptedException {
-        if (userCredential != null && userGoogleExpiryTime > System.currentTimeMillis()) {
-            return userCredential.getGoogleIdStr();
-        }
-        Preferences userPreferences = Preferences.userNodeForPackage(getClass());
-        String googleId = userPreferences.get("SAGE_GOOGLEID", "EMPTY");
-        String googleAccessToken = userPreferences.get("SAGE_GOOGLEACCESS", "EMPTY");
-        String googleRefreshToken = userPreferences.get("SAGE_GOOGLEREFRESH", "EMPTY");
-        long expiredTime = userPreferences.getLong("SAGE_GOOGLEEXPIRE", 0);
-        if (!googleId.equals("EMPTY") && !googleAccessToken.equals("EMPTY")
-                && expiredTime > System.currentTimeMillis()) {
-            userCredential = new UserCredential();
-            userCredential.setGoogleIdStr(googleId);
-            userGoogleExpiryTime = expiredTime;
-            userGoogleAccessToken = googleAccessToken;
-            userGoogleRefreshToken = googleRefreshToken;
-            return googleId;
+        if (userGoogleExpiryTime > System.currentTimeMillis() && userGoogleId != null && userGoogleAccessToken != null) {
+            return userGoogleId;
         }
 
-        if (!googleRefreshToken.equals("EMPTY")) {
+        if (userGoogleRefreshToken != null) {
             // Attempt to use refresh token to get new access token.
             Map<String,String> refreshTokenParams = new HashMap<String, String>();
             refreshTokenParams.put("client_id",CLIENT_ID);
             refreshTokenParams.put("client_secret",CLIENT_SECRET);
-            refreshTokenParams.put("refresh_token",googleRefreshToken);
+            refreshTokenParams.put("refresh_token",userGoogleRefreshToken);
             refreshTokenParams.put("grant_type","refresh_token");
             String responseJSON = executeGoogleHttpRequest(ENDPOINT_GOOGLE_TOKEN,refreshTokenParams);
             JSONObject JSON = new JSONObject(responseJSON);
             if (!JSON.has("error")) {
+                Preferences userPreferences = Preferences.userNodeForPackage(getClass());
                 userPreferences.put("SAGE_GOOGLEACCESS", JSON.getString("access_token"));
                 userPreferences.put("SAGE_GOOGLEID", JSON.getString("id_token"));
                 userPreferences.putLong("SAGE_GOOGLEEXPIRE", JSON.getLong("expires_in")*1000
                         + System.currentTimeMillis());
-                if (userCredential == null) {
-                    userCredential = new UserCredential();
-                }
-                userCredential.setGoogleIdStr(JSON.getString("id_token"));
-                userGoogleExpiryTime = JSON.getLong("expires_in")*1000 + System.currentTimeMillis();
                 userGoogleAccessToken = JSON.getString("access_token");
-                userGoogleRefreshToken = googleRefreshToken;
-                return userCredential.getGoogleIdStr();
+                userGoogleId = JSON.getString("id_token");
+                userGoogleExpiryTime = JSON.getLong("expires_in")*1000 + System.currentTimeMillis();
+                return userGoogleId;
             }
         }
 
         newGoogleAuth();
-        return userCredential.getGoogleIdStr();
+        return userGoogleId;
     }
 
     private void newGoogleAuth() throws IOException, InterruptedException {
@@ -263,10 +266,7 @@ public class SageClient {
                     userPreferences.put("SAGE_GOOGLEID", JSON.getString("id_token"));
                     userPreferences.putLong("SAGE_GOOGLEEXPIRE",
                             JSON.getInt("expires_in")*1000 + System.currentTimeMillis());
-                    if (userCredential == null) {
-                        userCredential = new UserCredential();
-                    }
-                    userCredential.setGoogleIdStr(JSON.getString("id_token"));
+                    userGoogleId = JSON.getString("id_token");
                     userGoogleExpiryTime = JSON.getLong("expires_in")*1000 + System.currentTimeMillis();
                     userGoogleAccessToken = JSON.getString("access_token");
                     userGoogleRefreshToken = JSON.getString("refresh_token");
@@ -301,15 +301,15 @@ public class SageClient {
             endpoint = endpoint.concat("?").concat(queryStringBuilder(params));
         }
 
-        System.out.println(sageToken); // Debug
-
         CloseableHttpClient httpclient = HttpClients.createDefault();
         ResponseHandler<String> responseHandler = createResponseHandler();
 
         if (requestType.toLowerCase().equals("get")) {
             HttpGet httpRequest = new HttpGet(endpoint);
             httpRequest.setHeader("Accept", "application/json");
-            httpRequest.setHeader("SageToken", sageToken);
+            if (sageToken != null) {
+                httpRequest.setHeader("SageToken", sageToken);
+            }
             //System.out.println("Executing request " + httpRequest.getRequestLine());
             responseBody = httpclient.execute(httpRequest, responseHandler);
             httpclient.close();
@@ -318,7 +318,9 @@ public class SageClient {
             HttpPost httpRequest = new HttpPost(endpoint);
             httpRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
             httpRequest.setHeader("Accept", "application/json");
-            httpRequest.setHeader("SageToken", sageToken);
+            if (sageToken != null) {
+                httpRequest.setHeader("SageToken", sageToken);
+            }
             StringEntity entity = new StringEntity(content);
             httpRequest.setEntity(entity);
             //System.out.println("Executing request " + httpRequest.getRequestLine());
