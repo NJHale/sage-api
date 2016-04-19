@@ -4,6 +4,7 @@ import com.sage.api.models.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -11,7 +12,6 @@ import java.util.prefs.Preferences;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.sun.deploy.net.URLEncoder;
 import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
@@ -19,7 +19,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -33,12 +32,14 @@ import org.json.JSONObject;
 
 public class SageClient {
 
-    private static final String ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage/";
-    private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "alpaca/goats";
-    private static final String ENDPOINT_PLACE_JOBORDER = ENDPOINT_ROOT + "alpaca/jobOrders";
-    private static final String ENDPOINT_GET_JOB = ENDPOINT_ROOT + "alpaca/jobs";
-    private static final String ENDPOINT_POLL_JOB = ENDPOINT_ROOT + "alpaca/jobs/jobid/status";
-    private static final String ENDPOINT_ANDROID_NODES = ENDPOINT_ROOT + "alpaca/androidNodes";
+    private static final String ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage/sage-bison/";
+    private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "goats";
+    private static final String ENDPOINT_PLACE_JOBORDER = ENDPOINT_ROOT + "jobOrders";
+    private static final String ENDPOINT_GET_JOB = ENDPOINT_ROOT + "jobs";
+    private static final String ENDPOINT_POLL_JOB = ENDPOINT_ROOT + "jobs/jobid/status";
+    private static final String ENDPOINT_ANDROID_NODES = ENDPOINT_ROOT + "androidNodes";
+    private static final String ENDPOINT_JAVA = ENDPOINT_ROOT + "javas";
+    private static final String ENDPOINT_SAGETOKEN = ENDPOINT_ROOT + "sageTokens";
 
     private static final String CLIENT_ID = "304221060563-b5mrhqtkl8adrpo42kb4inb9s20po7pb.apps.googleusercontent.com";
     private static final String CLIENT_SECRET = "le1PtSeQiLzfdTgftwf6qIZy";
@@ -46,9 +47,13 @@ public class SageClient {
     private static final String ENDPOINT_GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/device/code";
     private static final String ENDPOINT_GOOGLE_TOKEN = "https://www.googleapis.com/oauth2/v4/token";
 
+    private static SageToken userSageToken;
+    private static long sageTokenExpiryTime = 0;
+    private static int lastStatusCode = 0;
+
     public List<Goat> requestGoats(Map<String, String> map) throws IOException, InterruptedException {
         List<Goat> goatList = new ArrayList<Goat>();
-        String responseJSON = executeHttpRequest(ENDPOINT_GOAT, "GET", map, getGoogleId(), "SageTokenGarbage", null);
+        String responseJSON = executeHttpRequest(ENDPOINT_GOAT, "GET", map, getSageToken(), null);
         List<Object> objectList = buildObjectsFromJSON(responseJSON, "goat");
         if (objectList != null) {
             for (Object object : objectList) {
@@ -58,16 +63,17 @@ public class SageClient {
         return goatList;
     }
 
-    public int placeJobOrder(int bounty, long timeOut, byte[] data, File javaFile)
+    // To-Do: Separate java file upload, receive ID and send ID to jobOrder endpoint
+    public int placeJobOrder(File javaFile, BigDecimal bounty, long timeout, byte[] data)
             throws IOException, InterruptedException {
         int orderId = -1;
         String encodedJava = fileToBase64String(javaFile);
         if (encodedJava != null) {
-            JobOrder jobOrder = new JobOrder(bounty, timeOut, data, encodedJava);
+            JobOrder jobOrder = new JobOrder(0, bounty, timeout, data);
             ObjectMapper mapper = new ObjectMapper();
             String jobOrderJSON = mapper.writeValueAsString(jobOrder);
-            String responseJSON = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", null, getGoogleId(),
-                    "SageTokenGarbage", jobOrderJSON);
+            String responseJSON = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", null, getSageToken(),
+                    jobOrderJSON);
             if (!responseJSON.equals("null")) {
                 orderId = Integer.parseInt(responseJSON);
             }
@@ -77,9 +83,7 @@ public class SageClient {
 
     public Job getJob(int jobId) throws IOException, InterruptedException {
         Job job = null;
-        String responseJSON = executeHttpRequest(ENDPOINT_GET_JOB + "/" + jobId, "GET", null, getGoogleId(),
-                "SageTokenGarbage", null);
-        System.out.println(responseJSON);
+        String responseJSON = executeHttpRequest(ENDPOINT_GET_JOB + "/" + jobId, "GET", null, getSageToken(), null);
         List<Object> objectList = buildObjectsFromJSON(responseJSON, "job");
         if (objectList.size() > 0) {
             job = (Job)objectList.get(0);
@@ -89,7 +93,7 @@ public class SageClient {
 
     public boolean pollJob(int jobId) throws IOException, InterruptedException {
         String responseJSON = executeHttpRequest(ENDPOINT_POLL_JOB.replaceAll("jobid",Integer.toString(jobId)),
-                "GET",null,"","SageTokenGarbage","");
+                "GET",null,getSageToken(),"");
         List<Object> objectList = buildObjectsFromJSON(responseJSON, "jobstatus");
         JobStatus jobStatus = null;
         if (objectList.size() > 0) {
@@ -105,6 +109,37 @@ public class SageClient {
         userPreferences.remove("SAGE_GOOGLEACCESS");
         userPreferences.remove("SAGE_GOOGLEREFRESH");
         userPreferences.remove("SAGE_GOOGLEEXPIRE");
+    }
+
+    private String getSageToken() throws IOException, InterruptedException {
+        if (userSageToken != null && sageTokenExpiryTime > System.currentTimeMillis()) {
+            return userSageToken.getSageTokenStr();
+        }
+        else {
+            String sageToken = null;
+            String googleId = getGoogleId();
+            if (googleId != null) {
+                UserCredential credential = new UserCredential();
+                credential.setGoogleIdStr(googleId);
+                ObjectMapper mapper = new ObjectMapper();
+                String credentialJSON = mapper.writeValueAsString(credential);
+                String responseJSON = executeHttpRequest(ENDPOINT_SAGETOKEN, "POST", null, "", credentialJSON);
+                if (lastStatusCode == 401) {
+                    Preferences userPreferences = Preferences.userNodeForPackage(getClass());
+                    userPreferences.putLong("SAGE_GOOGLEEXPIRE",0);
+                    return getSageToken();
+                }
+                if (responseJSON != null && !responseJSON.equals("")) {
+                    List<Object> objectList = buildObjectsFromJSON(responseJSON, "sagetoken");
+                    SageToken token = (SageToken)objectList.get(0);
+                    userSageToken.setSageTokenStr(token.getSageTokenStr());
+                    sageTokenExpiryTime = System.currentTimeMillis() + 1800000;
+                    sageToken = userSageToken.getSageTokenStr();
+                }
+            }
+            System.out.println(sageToken); // Debug
+            return sageToken;
+        }
     }
 
     private String getGoogleId() throws IOException, InterruptedException {
@@ -204,6 +239,7 @@ public class SageClient {
         }
     }
 
+
     private String executeGoogleHttpRequest(String endpoint, Map<String,String> params) throws IOException {
         String responseBody;
 
@@ -222,12 +258,14 @@ public class SageClient {
     }
 
     private String executeHttpRequest(String endpoint, String requestType, Map<String,String> params,
-                                      String googleToken, String sageToken, String content) throws IOException {
+                                      String sageToken, String content) throws IOException {
         String responseBody;
 
         if (requestType.toLowerCase().equals("get") && params != null && !params.isEmpty()) {
             endpoint = endpoint.concat("?").concat(queryStringBuilder(params));
         }
+
+        System.out.println(sageToken); // Debug
 
         CloseableHttpClient httpclient = HttpClients.createDefault();
         ResponseHandler<String> responseHandler = createResponseHandler();
@@ -235,7 +273,6 @@ public class SageClient {
         if (requestType.toLowerCase().equals("get")) {
             HttpGet httpRequest = new HttpGet(endpoint);
             httpRequest.setHeader("Accept", "application/json");
-            httpRequest.setHeader("GoogleToken", googleToken);
             httpRequest.setHeader("SageToken", sageToken);
             //System.out.println("Executing request " + httpRequest.getRequestLine());
             responseBody = httpclient.execute(httpRequest, responseHandler);
@@ -245,7 +282,6 @@ public class SageClient {
             HttpPost httpRequest = new HttpPost(endpoint);
             httpRequest.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
             httpRequest.setHeader("Accept", "application/json");
-            httpRequest.setHeader("GoogleToken", googleToken);
             httpRequest.setHeader("SageToken", sageToken);
             StringEntity entity = new StringEntity(content);
             httpRequest.setEntity(entity);
@@ -266,6 +302,7 @@ public class SageClient {
             public String handleResponse(
                     final HttpResponse response) throws IOException {
                 int status = response.getStatusLine().getStatusCode();
+                lastStatusCode = status;
                 if ((status >= 200 && status < 300) || status == 400) {
                     HttpEntity entity = response.getEntity();
                     return entity != null ? EntityUtils.toString(entity) : null;
@@ -284,7 +321,8 @@ public class SageClient {
             public String handleResponse(
                     final HttpResponse response) throws IOException {
                 int status = response.getStatusLine().getStatusCode();
-                if (status >= 200 /*&& status < 300*/) {
+                lastStatusCode = status;
+                if ((status >= 200 && status < 300) || status == 401) {
                     HttpEntity entity = response.getEntity();
                     return entity != null ? EntityUtils.toString(entity) : null;
                 } else {
@@ -337,6 +375,10 @@ public class SageClient {
                 }
                 else if (identifier.equals("jobstatus")) {
                     objects = mapper.readValue(JSON, new TypeReference<List<JobStatus>>() {
+                    });
+                }
+                else if (identifier.equals("sagetoken")) {
+                    objects = mapper.readValue(JSON, new TypeReference<List<SageToken>>() {
                     });
                 }
                 else {

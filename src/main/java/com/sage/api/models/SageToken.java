@@ -2,29 +2,14 @@ package com.sage.api.models;
 
 public class SageToken {
 
-    private String tokenString;
-    private int userId;
+    private String sageTokenStr;
 
-    /**
-     * Default SageToken constructor
-     */
-    public SageToken() {
+    public SageToken() {}
 
+    public String getSageTokenStr() { return sageTokenStr; }
+
+    public void setSageTokenStr(String sageTokenStr) {
+        this.sageTokenStr = sageTokenStr;
     }
 
-    public String getTokenString() {
-        return tokenString;
-    }
-
-    public void setTokenString(String tokenString) {
-        this.tokenString = tokenString;
-    }
-
-    public int getUserId() {
-        return userId;
-    }
-
-    public void setUserId(int userId) {
-        this.userId = userId;
-    }
 }

@@ -1,19 +1,20 @@
 package com.sage.api.models;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 public class Job {
 
     private int jobId;
-    private int bounty;
     private int ordererId;
     private int nodeId;
+    private int javaId;
+    private BigDecimal bounty;
     private JobStatus status;
     private long timeout;
-    private String encodedDex;
+    private Date completion;
     private byte[] data;
     private byte[] result;
-    private Date completion;
 
     public Job() { }
 
@@ -23,11 +24,11 @@ public class Job {
 
     public void setJobId(int jobId) { this.jobId = jobId; }
 
-    public int getBounty() {
+    public BigDecimal getBounty() {
         return bounty;
     }
 
-    public void setBounty(int bounty) {
+    public void setBounty(BigDecimal bounty) {
         this.bounty = bounty;
     }
 
@@ -43,6 +44,13 @@ public class Job {
         this.nodeId = nodeId;
     }
 
+    public int getJavaId() {
+        return javaId;
+    }
+
+    public void setJavaId(int javaId) {
+        this.javaId = javaId;
+    }
 
     public JobStatus getStatus() {
         return status;
@@ -59,10 +67,6 @@ public class Job {
     public void setTimeout(long timeOut) {
         this.timeout = timeOut;
     }
-
-    public String getEncodedDex() { return encodedDex; }
-
-    public void setEncodedDex(String encodedDex) { this.encodedDex = encodedDex; }
 
     public byte[] getData() {
         return data;

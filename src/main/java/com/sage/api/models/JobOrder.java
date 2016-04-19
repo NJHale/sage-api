@@ -1,38 +1,40 @@
 package com.sage.api.models;
 
+import java.math.BigDecimal;
+
 public class JobOrder {
 
-    private int bounty;
-    private long timeOut;
+    private int javaId;
+    private BigDecimal bounty;
+    private long timeout;
     private byte[] data;
-    private String encodedJava;
 
     // Default constructor
     public JobOrder() {
 
     }
 
-    public JobOrder(int bounty, long timeOut, byte[] data, String encodedJava) {
+    public JobOrder(int javaId, BigDecimal bounty, long timeout, byte[] data) {
+        this.javaId = javaId;
         this.bounty = bounty;
-        this.timeOut = timeOut;
+        this.timeout = timeout;
         this.data = data;
-        this.encodedJava = encodedJava;
     }
 
-    public int getBounty() {
+    public BigDecimal getBounty() {
         return bounty;
     }
 
-    public void setBounty(int bounty) {
+    public void setBounty(BigDecimal bounty) {
         this.bounty = bounty;
     }
 
-    public long getTimeOut() {
-        return timeOut;
+    public long getTimeout() {
+        return timeout;
     }
 
-    public void setTimeOut(long timeOut) {
-        this.timeOut = timeOut;
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
     }
 
     public byte[] getData() {
@@ -41,13 +43,5 @@ public class JobOrder {
 
     public void setData(byte[] data) {
         this.data = data;
-    }
-
-    public String getEncodedJava() {
-        return encodedJava;
-    }
-
-    public void setEncodedJava(String encodedJava) {
-        this.encodedJava = encodedJava;
     }
 }

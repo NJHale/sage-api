@@ -141,7 +141,7 @@ public class SageClientTest extends TestCase {
     }
 
     // Test the placeJobOrder endpoint
-    public void testPlaceJobOrder() throws IOException, InterruptedException {
+    /*public void testPlaceJobOrder() throws IOException, InterruptedException {
         int orderId = testObject.placeJobOrder(100, 1000000,
                 "SageTokenGarbage".getBytes(), classWithSageTask);
         if (orderId == -1) {
@@ -151,7 +151,7 @@ public class SageClientTest extends TestCase {
             System.out.println("The orderID is: " + orderId);
         }
         assertNotSame(-1, orderId);
-    }
+    }*/
 
     public void testGetJob() throws IOException, InterruptedException {
         try {
@@ -163,7 +163,6 @@ public class SageClientTest extends TestCase {
                 System.out.println(job.getNodeId());
                 System.out.println(job.getStatus());
                 System.out.println(job.getTimeout());
-                System.out.println(job.getEncodedDex());
                 System.out.println(job.getData());
                 System.out.println(job.getResult());
                 System.out.println(job.getCompletion());
