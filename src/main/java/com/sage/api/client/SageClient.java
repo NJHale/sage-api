@@ -47,8 +47,12 @@ public class SageClient {
     private static final String ENDPOINT_GOOGLE_AUTH = "https://accounts.google.com/o/oauth2/device/code";
     private static final String ENDPOINT_GOOGLE_TOKEN = "https://www.googleapis.com/oauth2/v4/token";
 
+    private static UserCredential userCredential;
+    private static long userGoogleExpiryTime = 0;
+    private static String userGoogleAccessToken;
+    private static String userGoogleRefreshToken;
     private static SageToken userSageToken;
-    private static long sageTokenExpiryTime = 0;
+    private static long userSageTokenExpiryTime = 0;
     private static int lastStatusCode = 0;
 
     public List<Goat> requestGoats(Map<String, String> map) throws IOException, InterruptedException {
@@ -103,16 +107,22 @@ public class SageClient {
         return jobStatus == null || jobStatus == JobStatus.DONE || jobStatus == JobStatus.ERROR || jobStatus == JobStatus.TIMED_OUT;
     }
 
-    public void googleLogout() {
+    public void logout() {
         Preferences userPreferences = Preferences.userNodeForPackage(getClass());
         userPreferences.remove("SAGE_GOOGLEID");
         userPreferences.remove("SAGE_GOOGLEACCESS");
         userPreferences.remove("SAGE_GOOGLEREFRESH");
         userPreferences.remove("SAGE_GOOGLEEXPIRE");
+        userCredential = null;
+        userGoogleAccessToken = null;
+        userGoogleRefreshToken = null;
+        userGoogleExpiryTime = 0;
+        userSageToken = null;
+        userSageTokenExpiryTime = 0;
     }
 
     private String getSageToken() throws IOException, InterruptedException {
-        if (userSageToken != null && sageTokenExpiryTime > System.currentTimeMillis()) {
+        if (userSageToken != null && userSageTokenExpiryTime > System.currentTimeMillis()) {
             return userSageToken.getSageTokenStr();
         }
         else {
@@ -127,13 +137,17 @@ public class SageClient {
                 if (lastStatusCode == 401) {
                     Preferences userPreferences = Preferences.userNodeForPackage(getClass());
                     userPreferences.putLong("SAGE_GOOGLEEXPIRE",0);
+                    userGoogleExpiryTime = 0;
                     return getSageToken();
                 }
                 if (responseJSON != null && !responseJSON.equals("")) {
                     List<Object> objectList = buildObjectsFromJSON(responseJSON, "sagetoken");
                     SageToken token = (SageToken)objectList.get(0);
+                    if (userSageToken == null) {
+                        userSageToken = new SageToken();
+                    }
                     userSageToken.setSageTokenStr(token.getSageTokenStr());
-                    sageTokenExpiryTime = System.currentTimeMillis() + 1800000;
+                    userSageTokenExpiryTime = System.currentTimeMillis() + 1800000;
                     sageToken = userSageToken.getSageTokenStr();
                 }
             }
@@ -143,6 +157,9 @@ public class SageClient {
     }
 
     private String getGoogleId() throws IOException, InterruptedException {
+        if (userCredential != null && userGoogleExpiryTime > System.currentTimeMillis()) {
+            return userCredential.getGoogleIdStr();
+        }
         Preferences userPreferences = Preferences.userNodeForPackage(getClass());
         String googleId = userPreferences.get("SAGE_GOOGLEID", "EMPTY");
         String googleAccessToken = userPreferences.get("SAGE_GOOGLEACCESS", "EMPTY");
@@ -150,6 +167,11 @@ public class SageClient {
         long expiredTime = userPreferences.getLong("SAGE_GOOGLEEXPIRE", 0);
         if (!googleId.equals("EMPTY") && !googleAccessToken.equals("EMPTY")
                 && expiredTime > System.currentTimeMillis()) {
+            userCredential = new UserCredential();
+            userCredential.setGoogleIdStr(googleId);
+            userGoogleExpiryTime = expiredTime;
+            userGoogleAccessToken = googleAccessToken;
+            userGoogleRefreshToken = googleRefreshToken;
             return googleId;
         }
 
@@ -167,12 +189,19 @@ public class SageClient {
                 userPreferences.put("SAGE_GOOGLEID", JSON.getString("id_token"));
                 userPreferences.putLong("SAGE_GOOGLEEXPIRE", JSON.getLong("expires_in")*1000
                         + System.currentTimeMillis());
-                return userPreferences.get("SAGE_GOOGLEID","EMPTY");
+                if (userCredential == null) {
+                    userCredential = new UserCredential();
+                }
+                userCredential.setGoogleIdStr(JSON.getString("id_token"));
+                userGoogleExpiryTime = JSON.getLong("expires_in")*1000 + System.currentTimeMillis();
+                userGoogleAccessToken = JSON.getString("access_token");
+                userGoogleRefreshToken = googleRefreshToken;
+                return userCredential.getGoogleIdStr();
             }
         }
 
         newGoogleAuth();
-        return userPreferences.get("SAGE_GOOGLEID","EMPTY");
+        return userCredential.getGoogleIdStr();
     }
 
     private void newGoogleAuth() throws IOException, InterruptedException {
@@ -234,6 +263,13 @@ public class SageClient {
                     userPreferences.put("SAGE_GOOGLEID", JSON.getString("id_token"));
                     userPreferences.putLong("SAGE_GOOGLEEXPIRE",
                             JSON.getInt("expires_in")*1000 + System.currentTimeMillis());
+                    if (userCredential == null) {
+                        userCredential = new UserCredential();
+                    }
+                    userCredential.setGoogleIdStr(JSON.getString("id_token"));
+                    userGoogleExpiryTime = JSON.getLong("expires_in")*1000 + System.currentTimeMillis();
+                    userGoogleAccessToken = JSON.getString("access_token");
+                    userGoogleRefreshToken = JSON.getString("refresh_token");
                 }
             }
         }

@@ -6,7 +6,7 @@ public class UserCredential {
 
     public UserCredential() { }
 
-    public String getGoogleIdToken() {
+    public String getGoogleIdStr() {
         return googleIdStr;
     }
 

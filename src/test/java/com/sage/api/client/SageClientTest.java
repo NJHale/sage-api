@@ -191,7 +191,7 @@ public class SageClientTest extends TestCase {
         }
     }
 
-    /*public void testGoogleLogout() {
-        testObject.googleLogout();
+    /*public void testLogout() {
+        testObject.logout();
     }*/
 }
