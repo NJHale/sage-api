@@ -21,6 +21,14 @@ public class JobOrder {
         this.data = data;
     }
 
+    public int getJavaId() {
+        return javaId;
+    }
+
+    public void setJavaId(int javaId) {
+        this.javaId = javaId;
+    }
+
     public BigDecimal getBounty() {
         return bounty;
     }

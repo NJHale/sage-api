@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.prefs.Preferences;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -77,22 +77,47 @@ public class SageClient {
         return goatList;
     }
 
-    // To-Do: Separate java file upload, receive ID and send ID to jobOrder endpoint
-    public int placeJobOrder(File javaFile, BigDecimal bounty, long timeout, byte[] data)
-            throws IOException, InterruptedException {
-        int orderId = -1;
+    /** This method is used to place job orders and submit java files to be processed on the android devices
+     *
+     * @param javaFile This is Java source file that is submitted by the user to be processed.
+     * @param bounty This is the amount of money, for each individual job, that is awarded to the android user upon completion of the job.
+     * @param timeout This is the amount of milliseconds that the job will run before it times out.
+     * @param data
+     * @return Returns an integer list containing the order IDs of the jobs after being submitted.
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    public List<Integer> placeBatchOrder(File javaFile, BigDecimal bounty, long timeout, List<byte[]> data)
+        throws IOException, InterruptedException, ExecutionException {
         String encodedJava = fileToBase64String(javaFile);
+        List<Integer> idList = new ArrayList<Integer>();
         if (encodedJava != null) {
-            JobOrder jobOrder = new JobOrder(0, bounty, timeout, data);
+            ExecutorService pool = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors());
             ObjectMapper mapper = new ObjectMapper();
-            String jobOrderJSON = mapper.writeValueAsString(jobOrder);
-            String responseJSON = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", null, getSageToken(),
-                    jobOrderJSON);
-            if (!responseJSON.equals("null")) {
-                orderId = Integer.parseInt(responseJSON);
+            Java java = new Java();
+            java.setEncodedJava(encodedJava);
+            String javaJSON = mapper.writeValueAsString(java);
+            String responseJSON = executeHttpRequest(ENDPOINT_JAVA, "POST", null, getSageToken(), javaJSON);
+            int javaId = Integer.parseInt(responseJSON);
+            List<FutureTask<Integer>> futureTaskList = new LinkedList<FutureTask<Integer>>();
+            for (byte[] byteArray : data) {
+                JobPlacer jobPlacer = new JobPlacer(javaId, bounty, timeout, byteArray);
+                FutureTask<Integer> task = new FutureTask<Integer>(jobPlacer);
+                futureTaskList.add(task);
+                pool.submit(task);
+            }
+
+            while (futureTaskList.size() > 0) {
+                for (int i = 0; i < futureTaskList.size(); i++) {
+                    if (futureTaskList.get(i).isDone()) {
+                        idList.add(futureTaskList.remove(i).get());
+                        // correct index
+                        i--;
+                    }
+                }
             }
         }
-        return orderId;
+        return idList;
     }
 
     public Job getJob(int jobId) throws IOException, InterruptedException {
@@ -535,6 +560,21 @@ public class SageClient {
         }
         else {
             return false;
+        }
+    }
+
+    protected class JobPlacer implements Callable<Integer> {
+        private JobOrder jobOrder;
+
+        public JobPlacer(int javaId, BigDecimal bounty, long timeout, byte[] data) {
+            jobOrder = new JobOrder(javaId, bounty, timeout, data);
+        }
+
+        public Integer call() throws Exception {
+            ObjectMapper mapper = new ObjectMapper();
+            String jobOrderJSON = mapper.writeValueAsString(jobOrder);
+            String response = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", null, getSageToken(), jobOrderJSON);
+            return Integer.parseInt(response);
         }
     }
 }
