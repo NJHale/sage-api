@@ -196,7 +196,6 @@ public class SageClient {
                     sageToken = userSageToken;
                 }
             }
-            System.out.println(sageToken); // Debug
             return sageToken;
         }
     }

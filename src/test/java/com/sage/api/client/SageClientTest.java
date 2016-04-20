@@ -7,9 +7,9 @@ import junit.framework.TestCase;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by Pat on 3/2/2016.
@@ -141,17 +141,17 @@ public class SageClientTest extends TestCase {
     }
 
     // Test the placeJobOrder endpoint
-    /*public void testPlaceJobOrder() throws IOException, InterruptedException {
-        int orderId = testObject.placeJobOrder(100, 1000000,
-                "SageTokenGarbage".getBytes(), classWithSageTask);
-        if (orderId == -1) {
-            System.out.println("Something went wrong!");
+    public void testPlaceBatchOrder() throws IOException, InterruptedException, ExecutionException {
+        List<byte[]> dataSet = new ArrayList<byte[]>();
+        for (int i = 0; i < 50; i++) {
+            dataSet.add("GarbageData".getBytes());
         }
-        else {
-            System.out.println("The orderID is: " + orderId);
+        List<Integer> orderIds = testObject.placeBatchOrder(classWithSageTask, new BigDecimal(200), 360000, dataSet);
+        Collections.sort(orderIds);
+        for (int ID : orderIds) {
+            System.out.println(ID);
         }
-        assertNotSame(-1, orderId);
-    }*/
+    }
 
     public void testGetJob() throws IOException, InterruptedException {
         try {
