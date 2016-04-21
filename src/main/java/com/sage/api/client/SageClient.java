@@ -79,8 +79,8 @@ public class SageClient {
         return goatList;
     }
 
-    /** This method is used to place job orders and submit java files to be processed on the android devices
-     *
+    /**
+     * This method is used to place job orders and submit java files to be processed on the android devices
      * @param javaFile This is Java source file that is submitted by the user to be processed.
      * @param bounty This is the amount of money, for the whole batch, that is awarded to the android user upon completion of the job.
      * @param timeout This is the amount of milliseconds that the job will run before it times out.
@@ -133,9 +133,9 @@ public class SageClient {
     }
 
     /**
-     *
-     * @param jobId The id of the job that you are requesting
-     * @return Returns a Job object containing the data pertaining to the job
+     * This method is used to retrieve a Job and all data included in the Job model based on a supplied jobId.
+     * @param jobId The id of the job to be requested.
+     * @return Returns a Job object containing the data pertaining to the job.
      * @throws IOException
      * @throws InterruptedException
      */
@@ -154,6 +154,13 @@ public class SageClient {
         return job;
     }
 
+    /**
+     * This method is used to obtain a boolean true or false for if a job has been completed or not.
+     * @param jobId The id of the job to be polled.
+     * @return Returns a boolean value according to whether the job is completed or not.
+     * @throws IOException
+     * @throws InterruptedException
+     */
     public boolean pollJob(int jobId) throws IOException, InterruptedException {
         String responseJSON = executeHttpRequest(ENDPOINT_POLL_JOB.replaceAll("jobid",Integer.toString(jobId)),
                 "GET",null,null,null);
@@ -166,6 +173,10 @@ public class SageClient {
         return jobStatus == null || jobStatus == JobStatus.DONE || jobStatus == JobStatus.ERROR || jobStatus == JobStatus.TIMED_OUT;
     }
 
+    /**
+     * This method is used to clear saved Google account credentials from the system for a fresh login on next method
+     * call.
+     */
     public void logoutGoogle() {
         Preferences userPreferences = Preferences.userNodeForPackage(getClass());
         userPreferences.remove("SAGE_GOOGLEID");
@@ -178,6 +189,10 @@ public class SageClient {
         userGoogleExpiryTime = 0;
     }
 
+    /**
+     * This method is used to clear saved Sage account credentials from the system for a fresh login on next method
+     * call.
+     */
     public void logoutSage() {
         Preferences userPreferences = Preferences.userNodeForPackage(getClass());
         userPreferences.remove("SAGE_SAGETOKEN");
@@ -186,6 +201,10 @@ public class SageClient {
         userSageTokenExpiryTime = 0;
     }
 
+    /**
+     * This method is used to clear both Google and Sage account credentials from the system for a fresh login on next
+     * method call.
+     */
     public void logout() {
         logoutGoogle();
         logoutSage();
@@ -603,25 +622,15 @@ public class SageClient {
     }
 
     protected class JobPlacer implements Callable<int[]> {
-        private JobOrder jobOrder;
 
+        private JobOrder jobOrder;
         private int dataNum;
 
-        /**
-         *
-         * @param jobOrder
-         * @param dataNum
-         */
         public JobPlacer(int dataNum, JobOrder jobOrder) {
             this.dataNum = dataNum;
             this.jobOrder = jobOrder;
         }
 
-        /**
-         *
-         * @return An integer tuple representing this job order's <dataNum, jobId>
-         * @throws Exception
-         */
         public int[] call() throws Exception {
             ObjectMapper mapper = new ObjectMapper();
             String jobOrderJSON = mapper.writeValueAsString(jobOrder);
