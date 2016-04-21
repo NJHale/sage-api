@@ -80,7 +80,7 @@ public class SageClient {
     /**
      * This method is used to place job orders and submit java files to be processed on the android devices
      * @param javaFile This is Java source file that is submitted by the user to be processed.
-     * @param bounty This is the amount of money, for the whole batch, that is awarded to the android user upon
+     * @param bounty This is the amount of money, for each job in the batch, that is awarded to the android user upon
      *               completion of the job.
      * @param timeout This is the amount of milliseconds that the job will run before it times out.
      * @param dataList This is the List of data to create a job for each of it's elements
@@ -103,10 +103,8 @@ public class SageClient {
             int javaId = Integer.parseInt(responseJSON);
             List<FutureTask<int[]>> futureTaskList = new LinkedList<FutureTask<int[]>>();
 
-            BigDecimal bountyEach = bounty.divide(new BigDecimal(dataList.size()));
-
             for (int i = 0; i < dataList.size(); i++) {
-                JobOrder order = new JobOrder(javaId, bountyEach, timeout, dataList.get(i));
+                JobOrder order = new JobOrder(javaId, bounty, timeout, dataList.get(i));
                 JobPlacer jobPlacer = new JobPlacer(i, order);
                 FutureTask<int[]> task = new FutureTask<int[]>(jobPlacer);
                 futureTaskList.add(task);
