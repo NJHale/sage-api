@@ -32,6 +32,8 @@ import org.json.JSONObject;
 
 public class SageClient {
 
+    protected static final ExecutorService pool = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors());
+
     private static final String ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage-bison/";
     private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "goats";
     private static final String ENDPOINT_PLACE_JOBORDER = ENDPOINT_ROOT + "jobOrders";
@@ -82,42 +84,49 @@ public class SageClient {
      * @param javaFile This is Java source file that is submitted by the user to be processed.
      * @param bounty This is the amount of money, for each individual job, that is awarded to the android user upon completion of the job.
      * @param timeout This is the amount of milliseconds that the job will run before it times out.
-     * @param data
+     * @param dataList This is the List of data to create a job for each of it's elements
      * @return Returns an integer list containing the order IDs of the jobs after being submitted.
      * @throws IOException
      * @throws InterruptedException
      */
-    public List<Integer> placeBatchOrder(File javaFile, BigDecimal bounty, long timeout, List<byte[]> data)
-        throws IOException, InterruptedException, ExecutionException {
+    public Map<Integer, Integer> placeBatchOrder(File javaFile, BigDecimal bounty, long timeout, List<byte[]> dataList)
+            throws IOException, InterruptedException, ExecutionException {
         String encodedJava = fileToBase64String(javaFile);
-        List<Integer> idList = new ArrayList<Integer>();
+        Map<Integer, Integer> jobMap = new HashMap<Integer, Integer>();
+
         if (encodedJava != null) {
-            ExecutorService pool = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors());
+
             ObjectMapper mapper = new ObjectMapper();
             Java java = new Java();
             java.setEncodedJava(encodedJava);
             String javaJSON = mapper.writeValueAsString(java);
             String responseJSON = executeHttpRequest(ENDPOINT_JAVA, "POST", null, getSageToken(), javaJSON);
             int javaId = Integer.parseInt(responseJSON);
-            List<FutureTask<Integer>> futureTaskList = new LinkedList<FutureTask<Integer>>();
-            for (byte[] byteArray : data) {
-                JobPlacer jobPlacer = new JobPlacer(javaId, bounty, timeout, byteArray);
-                FutureTask<Integer> task = new FutureTask<Integer>(jobPlacer);
+            List<FutureTask<int[]>> futureTaskList = new LinkedList<FutureTask<int[]>>();
+
+            for (int i = 0; i < dataList.size(); i++) {
+                JobOrder order = new JobOrder(javaId, bounty, timeout, dataList.get(0));
+                JobPlacer jobPlacer = new JobPlacer(i, order);
+                FutureTask<int[]> task = new FutureTask<int[]>(jobPlacer);
                 futureTaskList.add(task);
-                pool.submit(task);
+                pool.submit(jobPlacer);
             }
 
             while (futureTaskList.size() > 0) {
                 for (int i = 0; i < futureTaskList.size(); i++) {
                     if (futureTaskList.get(i).isDone()) {
-                        idList.add(futureTaskList.remove(i).get());
+                        FutureTask<int[]> task = futureTaskList.remove(i);
                         // correct index
                         i--;
+                        // get the result of the task
+                        int[] jobTuple = task.get();
+                        // put the tuple into the map - Non-immutable tuple OH NOOO!!!
+                        jobMap.put(jobTuple[0], jobTuple[1]);
                     }
                 }
             }
         }
-        return idList;
+        return jobMap;
     }
 
     public Job getJob(int jobId) throws IOException, InterruptedException {
@@ -562,18 +571,48 @@ public class SageClient {
         }
     }
 
-    protected class JobPlacer implements Callable<Integer> {
+    /**
+     * Closes the thread pool that SageClient uses to send asynchronous requests to
+     * the sage webservice  - ?and logs out of all authenticated systems? -
+     * @throws Exception If something unexpected goes wrong shutting down the thread pool
+     */
+    public void closeSage() throws Exception {
+        // shut the pool down
+        try {
+            pool.shutdownNow();
+        } catch (Exception e) {
+            //TODO: replace logging messages with log4j...
+            System.err.println("An error occurred while closing the pool.");
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    protected class JobPlacer implements Callable<int[]> {
         private JobOrder jobOrder;
 
-        public JobPlacer(int javaId, BigDecimal bounty, long timeout, byte[] data) {
-            jobOrder = new JobOrder(javaId, bounty, timeout, data);
+        private int dataNum;
+
+        /**
+         *
+         * @param jobOrder
+         * @param dataNum
+         */
+        public JobPlacer(int dataNum, JobOrder jobOrder) {
+            this.dataNum = dataNum;
+            this.jobOrder = jobOrder;
         }
 
-        public Integer call() throws Exception {
+        /**
+         *
+         * @return An integer tuple representing this job order's <dataNum, jobId>
+         * @throws Exception
+         */
+        public int[] call() throws Exception {
             ObjectMapper mapper = new ObjectMapper();
             String jobOrderJSON = mapper.writeValueAsString(jobOrder);
             String response = executeHttpRequest(ENDPOINT_PLACE_JOBORDER, "POST", null, getSageToken(), jobOrderJSON);
-            return Integer.parseInt(response);
+            int[] tuple = { dataNum, Integer.parseInt(response) };
+            return tuple;
         }
     }
 }

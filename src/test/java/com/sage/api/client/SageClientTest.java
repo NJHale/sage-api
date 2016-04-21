@@ -146,10 +146,10 @@ public class SageClientTest extends TestCase {
         for (int i = 0; i < 50; i++) {
             dataSet.add("GarbageData".getBytes());
         }
-        List<Integer> orderIds = testObject.placeBatchOrder(classWithSageTask, new BigDecimal(200), 360000, dataSet);
-        Collections.sort(orderIds);
-        for (int ID : orderIds) {
-            System.out.println(ID);
+        Map<Integer, Integer> jobMap = testObject.placeBatchOrder(classWithSageTask, new BigDecimal(200), 360000, dataSet);
+        //Collections.sort(jobMap);
+        for (int id : jobMap.keySet()) {
+            System.out.println(id);
         }
     }
 
