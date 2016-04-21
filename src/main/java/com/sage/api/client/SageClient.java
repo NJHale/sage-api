@@ -32,7 +32,8 @@ import org.json.JSONObject;
 
 public class SageClient {
 
-    protected static final ExecutorService pool = new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors());
+    protected static final ExecutorService pool =
+            new ScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors());
 
     private static final String ENDPOINT_ROOT = "http://sage-ws.ddns.net:8080/sage-bison/";
     private static final String ENDPOINT_GOAT = ENDPOINT_ROOT + "goats";
@@ -82,7 +83,8 @@ public class SageClient {
     /**
      * This method is used to place job orders and submit java files to be processed on the android devices
      * @param javaFile This is Java source file that is submitted by the user to be processed.
-     * @param bounty This is the amount of money, for the whole batch, that is awarded to the android user upon completion of the job.
+     * @param bounty This is the amount of money, for the whole batch, that is awarded to the android user upon
+     *               completion of the job.
      * @param timeout This is the amount of milliseconds that the job will run before it times out.
      * @param dataList This is the List of data to create a job for each of it's elements
      * @return Returns an integer list containing the order IDs of the jobs after being submitted.
@@ -170,7 +172,8 @@ public class SageClient {
             jobStatus = (JobStatus)objectList.get(0);
         }
 
-        return jobStatus == null || jobStatus == JobStatus.DONE || jobStatus == JobStatus.ERROR || jobStatus == JobStatus.TIMED_OUT;
+        return jobStatus == null || jobStatus == JobStatus.DONE || jobStatus == JobStatus.ERROR ||
+                jobStatus == JobStatus.TIMED_OUT;
     }
 
     /**
@@ -244,7 +247,8 @@ public class SageClient {
     }
 
     private String getGoogleId() throws IOException, InterruptedException {
-        if (userGoogleExpiryTime > System.currentTimeMillis() && userGoogleId != null && userGoogleAccessToken != null) {
+        if (userGoogleExpiryTime > System.currentTimeMillis() && userGoogleId != null &&
+                userGoogleAccessToken != null) {
             return userGoogleId;
         }
 
@@ -524,8 +528,8 @@ public class SageClient {
         if (file.getName().split("\\.")[1].toLowerCase().equals("java")) {  // First check if the file is a Java file
             Scanner scanner = new Scanner(file);                            // Scanner for reading the file
             String line = "";                                               // Initialize line holder
-            boolean foundPackage = false;                                   // Flag: If SageTask package has been found
-            boolean foundImplements = false;                                // Flag: If implement SageTask has been found
+            boolean foundPackage = false;                                   // Flag: If SageTask package is found
+            boolean foundImplements = false;                                // Flag: If implement SageTask is found
             boolean multilineMode = false;                                  // Flag: Tracking if currently in ml mode
             boolean redoLine = false;                                       // Flag: If new line will be read from file
 
