@@ -1,7 +1,6 @@
 package com.sage.api.client;
 
 import com.sage.api.models.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -9,7 +8,6 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.prefs.Preferences;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
@@ -24,7 +22,6 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -109,7 +106,7 @@ public class SageClient {
             BigDecimal bountyEach = bounty.divide(new BigDecimal(dataList.size()));
 
             for (int i = 0; i < dataList.size(); i++) {
-                JobOrder order = new JobOrder(javaId, bountyEach, timeout, dataList.get(0));
+                JobOrder order = new JobOrder(javaId, bountyEach, timeout, dataList.get(i));
                 JobPlacer jobPlacer = new JobPlacer(i, order);
                 FutureTask<int[]> task = new FutureTask<int[]>(jobPlacer);
                 futureTaskList.add(task);
