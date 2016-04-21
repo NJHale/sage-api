@@ -227,11 +227,6 @@ public class SageClient {
                 ObjectMapper mapper = new ObjectMapper();
                 String credentialJSON = mapper.writeValueAsString(credential);
                 String responseJSON = executeHttpRequest(ENDPOINT_SAGETOKEN, "POST", null, null, credentialJSON);
-                if (lastStatusCode == 401) {
-                    userPreferences.putLong("SAGE_GOOGLEEXPIRE",0);
-                    userGoogleExpiryTime = 0;
-                    return getSageToken();
-                }
                 if (responseJSON != null && !responseJSON.equals("")) {
                     List<Object> objectList = buildObjectsFromJSON(responseJSON, "sagetoken");
                     SageToken token = (SageToken)objectList.get(0);
@@ -365,7 +360,7 @@ public class SageClient {
     }
 
     private String executeHttpRequest(String endpoint, String requestType, Map<String,String> params,
-                                      String sageToken, String content) throws IOException {
+                                      String sageToken, String content) throws IOException, InterruptedException {
         String responseBody;
 
         if (requestType.toLowerCase().equals("get") && params != null && !params.isEmpty()) {
@@ -401,7 +396,26 @@ public class SageClient {
         else {
             return "";
         }
-        return responseBody;
+
+        if (lastStatusCode == 401 && endpoint.equals(ENDPOINT_SAGETOKEN)) {
+            // GoogleId was invalid, get a new one and resend request
+            userGoogleExpiryTime = 0;
+            String newGoogleId = getGoogleId();
+            UserCredential newUserCredential = new UserCredential();
+            newUserCredential.setGoogleIdStr(newGoogleId);
+            ObjectMapper mapper = new ObjectMapper();
+            String newUserCredentialString = mapper.writeValueAsString(newUserCredential);
+            return executeHttpRequest(endpoint, requestType, params, sageToken, newUserCredentialString);
+        }
+        else if (lastStatusCode == 401) {
+            // SageToken was invalid, get a new one and resend request
+            userSageTokenExpiryTime = 0;
+            String newSageToken = getSageToken();
+            return executeHttpRequest(endpoint, requestType, params, newSageToken, content);
+        }
+        else {
+            return responseBody;
+        }
     }
 
     private ResponseHandler<String> createGoogleResponseHandler() {
