@@ -37,7 +37,7 @@ public class SageClientTest extends TestCase {
         //isJavaWith = new File("C:\\Users\\Pat\\Desktop\\Sage\\TestClassWith.java");
         //isJavaWithout = new File ("C:\\Users\\Pat\\Desktop\\Sage\\TestClassWithout.java");
         //isNotJava = new File("C:\\Users\\Pat\\Desktop\\Sage\\TextFile.txt");
-        classWithSageTask = new File("C:\\Users\\Pat\\Documents\\cs491\\sage-api\\src\\test\\java\\ClassWithSageTask.java");
+        classWithSageTask = new File("C:\\Users\\Pat\\Desktop\\Sage\\sage-api\\src\\test\\java\\ClassWithSageTask.java");
     }
 
     public void tearDown() throws Exception {
@@ -155,7 +155,7 @@ public class SageClientTest extends TestCase {
 
     public void testGetJob() throws IOException, InterruptedException {
         try {
-            Job job = testObject.getJob(199);
+            Job job = testObject.getJob(750);
             if (job != null) {
                 System.out.println(job.getJobId());
                 System.out.println(job.getBounty());
@@ -178,7 +178,7 @@ public class SageClientTest extends TestCase {
 
     public void testPollJob() throws IOException, InterruptedException {
         try {
-            boolean completed = testObject.pollJob(199);
+            boolean completed = testObject.pollJob(750);
             if (completed) {
                 System.out.println("Completed");
             }
@@ -192,7 +192,7 @@ public class SageClientTest extends TestCase {
     }
 
     public void testLogout() {
-        testObject.logoutGoogle();
-        //testObject.logout();
+        //testObject.logoutGoogle();
+        testObject.logout();
     }
 }

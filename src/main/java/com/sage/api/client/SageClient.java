@@ -109,11 +109,12 @@ public class SageClient {
                 JobPlacer jobPlacer = new JobPlacer(i, order);
                 FutureTask<int[]> task = new FutureTask<int[]>(jobPlacer);
                 futureTaskList.add(task);
-                pool.submit(jobPlacer);
+                pool.submit(task);
             }
 
             while (futureTaskList.size() > 0) {
                 for (int i = 0; i < futureTaskList.size(); i++) {
+                    Thread.sleep(1);
                     if (futureTaskList.get(i).isDone()) {
                         FutureTask<int[]> task = futureTaskList.remove(i);
                         // correct index
