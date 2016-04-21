@@ -142,9 +142,14 @@ public class SageClient {
     public Job getJob(int jobId) throws IOException, InterruptedException {
         Job job = null;
         String responseJSON = executeHttpRequest(ENDPOINT_GET_JOB + "/" + jobId, "GET", null, getSageToken(), null);
-        List<Object> objectList = buildObjectsFromJSON(responseJSON, "job");
-        if (objectList.size() > 0) {
-            job = (Job)objectList.get(0);
+        if (lastStatusCode == 403) {
+            System.out.println("You are not authorized to retrieve job " + jobId + ".  Returned null Job object.");
+        }
+        else {
+            List<Object> objectList = buildObjectsFromJSON(responseJSON, "job");
+            if (objectList.size() > 0) {
+                job = (Job) objectList.get(0);
+            }
         }
         return job;
     }
