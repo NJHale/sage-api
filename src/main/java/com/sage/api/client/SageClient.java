@@ -82,7 +82,7 @@ public class SageClient {
     /** This method is used to place job orders and submit java files to be processed on the android devices
      *
      * @param javaFile This is Java source file that is submitted by the user to be processed.
-     * @param bounty This is the amount of money, for each individual job, that is awarded to the android user upon completion of the job.
+     * @param bounty This is the amount of money, for the whole batch, that is awarded to the android user upon completion of the job.
      * @param timeout This is the amount of milliseconds that the job will run before it times out.
      * @param dataList This is the List of data to create a job for each of it's elements
      * @return Returns an integer list containing the order IDs of the jobs after being submitted.
@@ -104,8 +104,10 @@ public class SageClient {
             int javaId = Integer.parseInt(responseJSON);
             List<FutureTask<int[]>> futureTaskList = new LinkedList<FutureTask<int[]>>();
 
+            BigDecimal bountyEach = bounty.divide(new BigDecimal(dataList.size()));
+
             for (int i = 0; i < dataList.size(); i++) {
-                JobOrder order = new JobOrder(javaId, bounty, timeout, dataList.get(0));
+                JobOrder order = new JobOrder(javaId, bountyEach, timeout, dataList.get(0));
                 JobPlacer jobPlacer = new JobPlacer(i, order);
                 FutureTask<int[]> task = new FutureTask<int[]>(jobPlacer);
                 futureTaskList.add(task);
@@ -130,6 +132,13 @@ public class SageClient {
         return jobMap;
     }
 
+    /**
+     *
+     * @param jobId The id of the job that you are requesting
+     * @return Returns a Job object containing the data pertaining to the job
+     * @throws IOException
+     * @throws InterruptedException
+     */
     public Job getJob(int jobId) throws IOException, InterruptedException {
         Job job = null;
         String responseJSON = executeHttpRequest(ENDPOINT_GET_JOB + "/" + jobId, "GET", null, getSageToken(), null);
@@ -142,7 +151,7 @@ public class SageClient {
 
     public boolean pollJob(int jobId) throws IOException, InterruptedException {
         String responseJSON = executeHttpRequest(ENDPOINT_POLL_JOB.replaceAll("jobid",Integer.toString(jobId)),
-                "GET",null,getSageToken(),"");
+                "GET",null,null,null);
         List<Object> objectList = buildObjectsFromJSON(responseJSON, "jobstatus");
         JobStatus jobStatus = null;
         if (objectList.size() > 0) {
@@ -394,7 +403,7 @@ public class SageClient {
                     final HttpResponse response) throws IOException {
                 int status = response.getStatusLine().getStatusCode();
                 lastStatusCode = status;
-                if ((status >= 200 && status < 300) || status == 401) {
+                if ((status >= 200 && status < 300) || status == 401 || status == 403) {
                     HttpEntity entity = response.getEntity();
                     return entity != null ? EntityUtils.toString(entity) : null;
                 } else {
