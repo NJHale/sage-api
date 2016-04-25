@@ -84,7 +84,8 @@ public class SageClient {
      *               completion of the job.
      * @param timeout This is the amount of milliseconds that the job will run before it times out.
      * @param dataList This is the List of data to create a job for each of it's elements
-     * @return Returns an integer list containing the order IDs of the jobs after being submitted.
+     * @return Returns an integer list containing the order IDs of the jobs after being submitted.  Empty list if the
+     *         file does not implement the SageTask interface.
      * @throws IOException
      * @throws InterruptedException
      */
@@ -101,7 +102,7 @@ public class SageClient {
             String javaJSON = mapper.writeValueAsString(java);
             String responseJSON = executeHttpRequest(ENDPOINT_JAVA, "POST", null, getSageToken(), javaJSON);
             int javaId = Integer.parseInt(responseJSON);
-            List<FutureTask<int[]>> futureTaskList = new LinkedList<FutureTask<int[]>>();
+            Queue<FutureTask<int[]>> futureTaskList = new LinkedList<FutureTask<int[]>>();
 
             for (int i = 0; i < dataList.size(); i++) {
                 JobOrder order = new JobOrder(javaId, bounty, timeout, dataList.get(i));
@@ -111,19 +112,13 @@ public class SageClient {
                 pool.submit(task);
             }
 
-            while (futureTaskList.size() > 0) {
-                for (int i = 0; i < futureTaskList.size(); i++) {
-                    Thread.sleep(1);
-                    if (futureTaskList.get(i).isDone()) {
-                        FutureTask<int[]> task = futureTaskList.remove(i);
-                        // correct index
-                        i--;
-                        // get the result of the task
-                        int[] jobTuple = task.get();
-                        // put the tuple into the map - Non-immutable tuple OH NOOO!!!
-                        jobMap.put(jobTuple[0], jobTuple[1]);
-                    }
-                }
+            Iterator iterator = futureTaskList.iterator();
+            while (iterator.hasNext()) {
+                FutureTask<int[]> task = (FutureTask<int[]>)iterator.next();
+                // get the result of the task
+                int[] jobTuple = task.get();
+                // put the tuple into the map - Non-immutable tuple OH NOOO!!!
+                jobMap.put(jobTuple[0], jobTuple[1]);
             }
         }
         return jobMap;

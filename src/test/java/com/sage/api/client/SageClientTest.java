@@ -51,22 +51,21 @@ public class SageClientTest extends TestCase {
         }
     }
 
-    // Test the placeJobOrder endpoint
+    // Test the placeBatchOrder endpoint
     public void testPlaceBatchOrder() throws IOException, InterruptedException, ExecutionException {
         List<byte[]> dataSet = new ArrayList<byte[]>();
         for (int i = 0; i < 50; i++) {
             dataSet.add("GarbageData".getBytes());
         }
         Map<Integer, Integer> jobMap = testObject.placeBatchOrder(classWithSageTask, new BigDecimal(200), 360000, dataSet);
-        //Collections.sort(jobMap);
         for (int id : jobMap.keySet()) {
-            System.out.println(id);
+            System.out.println(id + " : " + jobMap.get(id));
         }
     }
 
     public void testGetJob() throws IOException, InterruptedException {
         try {
-            Job job = testObject.getJob(750);
+            Job job = testObject.getJob(49529);
             if (job != null) {
                 System.out.println(job.getJobId());
                 System.out.println(job.getBounty());
@@ -89,7 +88,7 @@ public class SageClientTest extends TestCase {
 
     public void testPollJob() throws IOException, InterruptedException {
         try {
-            boolean completed = testObject.pollJob(750);
+            boolean completed = testObject.pollJob(49529);
             if (completed) {
                 System.out.println("Completed");
             }
